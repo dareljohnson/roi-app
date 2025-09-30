@@ -22,8 +22,8 @@ async function seed() {
   console.log('🌱 Seeding database...')
 
   // Create another admin user
-  const anotherAdminEmail = 'dareljohnson@gmail.com'
-  const anotherAdminPassword = 'Bunny200#'
+  const anotherAdminEmail = ''
+  const anotherAdminPassword = ''
   const anotherAdminHashedPassword = await bcrypt.hash(anotherAdminPassword, 10)
   const anotherAdmin = await prisma.user.upsert({
     where: { email: anotherAdminEmail },
