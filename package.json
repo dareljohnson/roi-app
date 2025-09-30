@@ -1,7 +1,7 @@
 {
   "name": "real-estate-investment-roi-app",
-  "version": "1.0.0",
-  "description": "Investment Property Calculator with ROI analysis and profit projections",
+  "version": "2.0.0",
+  "description": "Investment Property Calculator with ROI analysis and profit projections - Production Ready",
   "private": true,
   "scripts": {
     "dev": "next dev",

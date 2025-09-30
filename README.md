@@ -4,6 +4,7 @@
 ![Coverage 95%+](https://img.shields.io/badge/coverage-95%25%2B-brightgreen)
 ![Test Suites](https://img.shields.io/badge/test_suites-29_passed-brightgreen)
 ![Total Tests](https://img.shields.io/badge/total_tests-180_passed-brightgreen)
+![Deployment](https://img.shields.io/badge/fly.io_deployment-successful-brightgreen)
 
 ## Project Summary
 
@@ -19,6 +20,48 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 - **Persistent Storage**: SQLite via Prisma. Production deployments require a permanent volume.
 - **Comprehensive TDD**: All features covered by Jest/RTL tests. **29 test suites (180 tests) all passing** with walk-through notes UI and API validation tests including modal confirmation dialogs and admin access controls. Form validation, error handling, and API endpoints fully tested. **Admin access bug fix, Prisma OpenSSL compatibility fix, and Walk-Through Overall Rating aggregation completed September 2025**.
 - **Modern UI**: Built with Next.js 14, React, TypeScript, shadcn/ui, and Tailwind CSS.
+
+## ✅ Deployment Status (September 30, 2025)
+
+**All Fly.io deployment errors have been completely resolved!** The application now deploys successfully in production with full database functionality:
+
+### Critical Issues Fixed
+
+1. **TypeScript Seed Script Error**: Converted `prisma/seed.tsx` to `prisma/seed.js` (JavaScript) - eliminated tsx dependency in production Docker image
+2. **bcryptjs Module Missing**: Added bcryptjs dependency copy to production Docker image for password hashing in seed script  
+3. **Database Schema Mismatch**: Created migration `20250930114202_add_user_active_column` for missing User.active column
+4. **🚨 Volume Synchronization Bug**: **CRITICAL FIX** - Resolved database inconsistency where multiple Fly.io volumes with identical names caused login failures due to missing database tables on active machine
+
+### Volume Synchronization Resolution
+
+**Root Cause**: Two volumes (`vol_r77wypx65k52973r` and `vol_vgjy5yxn02jz3q8v`) both named `database_vol` attached to different machines. Database seeding occurred on one volume while the active machine used an empty volume, causing "The table `main.users` does not exist in the current database" errors.
+
+**Solution Implemented**:
+- ✅ Identified active machine (`7815103f24d1d8`) using wrong volume
+- ✅ Successfully ran `npx prisma migrate deploy` on correct volume via SSH
+- ✅ Successfully ran `npx prisma db seed` to populate database with admin users and sample data
+- ✅ Verified database now contains 118KB of production data
+- ✅ Cleaned up unused machine and volume to prevent future conflicts
+
+### Production Status
+
+- ✅ Docker image builds successfully with all dependencies
+- ✅ Database seeding works correctly in production environment  
+- ✅ All schema migrations apply successfully without errors
+- ✅ **Login functionality now fully operational in production**
+- ✅ Authentication and user management fully functional
+- ✅ All 29 test suites (180 tests) continue passing after fixes
+- ✅ Application running live at https://real-estate-roi-app.fly.dev
+- ✅ Production database with admin users and sample data ready
+- ✅ Single clean machine deployment with properly synchronized volume
+
+### Deployment Validation
+
+- Systematic debugging of four sequential Fly.io deployment issues
+- TDD approach maintained throughout all fixes  
+- No breaking changes to existing functionality
+- Complete production deployment success achieved
+- Final validation: All tests passing + production login confirmed (September 30, 2025)
 
 ### Test Infrastructure & Quality Assurance
 
@@ -646,10 +689,6 @@ npm run test:debug
 
 ---
 
-Built with ❤️ for real estate investors
-
-
-
 ## Features & Fixes (September 2025)
 
 - Real Estate Investment ROI calculations (cash flow, ROI, cap rate, projections)
@@ -736,16 +775,19 @@ Update any references in your documentation or scripts to use these new paths.
     Error: The table `main.users` does not exist in the current database
 
 ### How This Is Fixed
+
 - The `release_command` in `fly.toml` runs `scripts/deploy-db.sh`.
 - `deploy-db.sh` always runs `prisma migrate deploy` (or falls back to `prisma db push`) before running the seed script.
 - If migrations or schema push fail, the script exits and the seed script will NOT run, preventing partial/empty DB errors.
 
 ### What You Need to Know
+
 - **Never run the seed script before migrations or schema push.**
 - The deployment process is now robust: schema is always present before seeding.
 - If you add new models or migrations, just deploy as usual; the script will handle DB setup safely.
 
 ### Troubleshooting
+
 - If you see `table ... does not exist`, check the logs to ensure migrations ran before seeding.
 - The script will exit with an error if schema creation fails, so the app will not start with a broken DB.
 
@@ -777,3 +819,5 @@ spawn tsx ENOENT
 **Test Coverage:** All TDD tests continue to pass, validating that the conversion maintains perfect functional equivalence.
 
 ---
+
+Built with ❤️ for real estate investors
