@@ -37,8 +37,11 @@ else
 fi
 
 echo "🌱 Running database seed..."
-if ! npx prisma db seed; then
-  echo "⚠️  Seed failed or no seed data"
+if npx prisma db seed; then
+  echo "✅ Database seeding completed successfully"
+else
+  echo "❌ Database seeding failed!"
+  # Don't exit here as the app can still run without seed data
 fi
 
 echo "✅ Deployment process completed successfully"

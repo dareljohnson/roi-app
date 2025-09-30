@@ -80,6 +80,10 @@ async function seed() {
 }
 
 seed()
+  .then(() => {
+    console.log('🎉 Database seeding completed successfully!')
+    process.exit(0)
+  })
   .catch((e) => {
     console.error('❌ Database seeding failed:', e)
     process.exit(1)
