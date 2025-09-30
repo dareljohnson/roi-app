@@ -1,0 +1,301 @@
+pip-requirements
+# Real Estate Investment ROI App - Requirements (2025)
+
+## Project Summary
+This project is a full-featured real estate investment analysis tool with:
+- Robust error handling (vacancy rate defaults, user-friendly errors, TDD)
+- Admin-only export/import (JSON, secure, TDD)
+- Persistent SQLite storage (Prisma, fly.io volume)
+- Authentication/authorization (next-auth, role-based)
+- Comprehensive TDD (Jest, RTL, 95%+ coverage)
+- Production-ready deployment (fly.io, Docker, env management)
+- **Admin Documentation (Wiki):** Admins can view, add (modal), edit, delete, export, and import documentation/wiki entries. Tag side menu for filtering (fully functional and TDD-tested as of September 2025). Pagination for efficient browsing of large knowledge bases (API and UI fully tested). All changes are persisted in SQLite and covered by robust TDD. All admin wiki features are fully tested and validated.
+ **Admin Documentation (Wiki):** Admins can view, add (modal), edit, delete, export, and import documentation/wiki entries. Tag side menu for filtering (fully functional and TDD-tested as of September 2025). Pagination for efficient browsing of large knowledge bases (API and UI fully tested). All changes are persisted in SQLite and covered by robust TDD. All admin wiki features are fully tested and validated.
+   - **UI Update (September 2025):** The Admin Wiki data table now displays only Title, Tags, and Actions columns. Created/Updated date columns have been removed from the main table and are now shown only in the expanded wiki notes for each entry.
+   - **Admin Avatar Logic:** The Admin user avatar now robustly displays the Admin.png image for any user with the 'Admin' role (case-insensitive, trimmed, with fallback), ensuring correct avatar display regardless of session object structure.
+   - **TDD Coverage:** All Admin Wiki features, including the updated table columns and avatar logic, are fully covered by Jest unit and integration tests. All tests pass as of September 2025.
+- **Wiki Tag Filtering:** Tag filtering is robust and fully tested (fixed September 2025).
+- **Wiki Pagination:** Pagination logic is fully covered by Jest/RTL tests for both API and UI, including edge cases and navigation.
+
+# 20. 30-Year Projections (2025)
+- Annual projections for up to 30 years (cash flow, equity, ROI, etc.)
+- Toggle between 5-year and 30-year projections in the dashboard
+- All projection calculations are fully covered by Jest unit tests (TDD)
+- UI toggle is tested for correct rendering and switching
+- For fly.io deployment, a permanent volume is recommended for SQLite database persistence
+
+# 19. Archive Management (2025)
+- Properties can be archived (soft delete) instead of permanent deletion, with undo and recovery options
+- Archive toggle to instantly switch between active and archived properties
+- Archive/unarchive operations are available for each property, with full test coverage
+- Visual indicators: Archived properties display a prominent yellow "Archived" badge and faded card style for instant recognition (fully TDD-tested)
+- Backend API supports `archived` query for efficient data retrieval
+- Admins can archive/unarchive any property
+- All archive features are fully covered by Jest/RTL tests (TDD)
+- Null safety and robust error handling for all archive workflows
+- Bug fix: Archive/unarchive UI and API now fully robust, with null safety and complete test coverage (2025)
+
+# 18. Robust Vacancy Rate Handling
+- Vacancy rate now defaults to 5% (0.05) if missing, invalid, or out of range, both in the UI and calculation engine.
+- Prevents analysis errors and ensures a smooth user experience.
+- All edge cases (missing, empty, NaN, <0, >1) are covered by automated Jest tests.
+- Bug fix: "Missing or invalid value for required field: vacancyRate" is now fully resolved and tested.
+# 14. Square Footage Formatting
+- Square footage input is formatted with commas for display (e.g., 1434 → 1,434), but always saved as a number for calculations and database storage.
+- Improves user experience and data integrity.
+
+# 15. Error Handling & TDD
+- All user-facing errors and warnings are standardized in a modern, friendly style (like Google).
+- Deactivated users see a clear message: "Your account has been deactivated. Please contact support if you believe this is a mistake."
+- All features are covered by robust Jest unit and integration tests (see `/src/tests`).
+- TDD is used for all new features and bug fixes.
+
+# 16. Test Coverage
+- All core features, including property analysis, admin controls, delayed delete/undo, and input formatting, are covered by automated tests.
+- Run `npm test` to verify all tests pass.
+
+# 17. Node & Environment
+- Node v20.14.0 recommended.
+- See `.env.example` for required environment variables.
+# Investment Property Calculator - Requirements Document
+
+## Overview
+A comprehensive real estate investment analysis tool that calculates ROI, cash flow, and provides investment recommendations based on property details, financing, and operating expenses.
+
+
+## Core Features Implemented
+### 13. Delayed Delete with Undo
+- When deleting a property from the analysis history, a modal confirmation dialog is shown.
+- After confirming, the property is removed from the UI, but a toast message appears with an Undo option.
+- If Undo is clicked within 10 seconds, the property is fully restored (no backend delete occurs).
+- If not, the property is permanently deleted from the database after the delay.
+- This workflow is fully covered by automated Jest/RTL tests simulating the modal, toast, and undo logic.
+
+### 12. Property Image Fetch
+- When a property address is entered in the Property Analysis form and the user clicks away, the app automatically fetches a frontal image of the property (using Bing Image Search as fallback) and displays it. If no image is found, a placeholder is shown.
+
+### 1. Property Details Input
+- Property address and basic information
+- Property type (Single family, Multi-family, Commercial, etc.)
+- Property value and purchase price
+- Square footage and lot size
+- Year built and property condition
+- **Room Rental Feature:** User can specify how many rooms to rent, set weekly rate for each, and see total monthly rent estimate (sum of weekly rates × 4). UI appears below Bedrooms entry on the Property Analysis Form.
+
+### 2. Database Storage
+- SQLite database with Prisma ORM
+- Property data persistence
+- Historical analysis storage
+- fly.io volume support for production
+
+### 3. Financing Calculations
+- Purchase price and down payment
+- Mortgage payment calculations
+- Interest rate and loan term
+- Principal and interest (P&I)
+- Closing costs and origination fees
+- Private mortgage insurance (PMI)
+
+### 4. Operating Expenses
+- Property taxes (annual)
+- Property insurance
+- Property management fees
+- Maintenance and repairs
+- Utilities and equipment
+- HOA fees
+- Vacancy allowance
+- Rehab costs and ARV calculations
+
+
+### 5. Rental Income Analysis
+- Gross rental income (can be calculated from room rental feature if used)
+- Vacancy rate calculations
+- Net operating income (NOI)
+- Effective gross income
+- Rent escalation projections
+
+### 6. Financial Metrics
+- Return on Investment (ROI)
+- Cash-on-cash return
+- Net Present Value (NPV)
+- Internal Rate of Return (IRR)
+- Capitalization rate
+- Debt service coverage ratio
+- Cash flow analysis
+
+### 7. Profit Analysis
+- Monthly cash flow projections
+- Annual profit analysis
+- 5-year investment projections
+- Tax depreciation calculations
+- Break-even analysis
+
+### 8. Investment Recommendation
+- Algorithmic thumbs up/down recommendation
+- Based on ROI thresholds (>8% good, >12% excellent)
+- Cash flow requirements (positive monthly)
+- Risk assessment factors
+- Market comparison metrics
+
+### 9. User Interface
+- Mobile-responsive design
+- shadcn/ui component library
+- Intuitive form-based input
+- Interactive results dashboard
+- Tabbed interface for different analysis views
+
+### 10. Testing Framework
+- Jest unit testing
+- React Testing Library
+- TDD approach for all calculations
+- 95%+ code coverage target
+- Automated test suite
+
+### 11. Admin Insights Dashboard
+- Admin dashboard includes:
+  - API call snapshot (total calls, errors, last 24h)
+  - **Persistent API call logging:** All API calls are logged to the database and available for drill-down and audit in the Admin Insights Dashboard. Logging is robust and TDD-tested.
+  - Live console output (last 200 lines)
+- Insights dashboard is available on the Admin page
+- Data is updated automatically and is only visible to Admin users
+
+## Technical Requirements
+
+
+### Frontend
+- Next.js 14 with App Router
+- React 18 with TypeScript
+- Tailwind CSS for styling
+- shadcn/ui for components
+- React Hook Form for form management
+- Zod for validation
+- Room rental UI: dynamic room count, per-room weekly rate, and monthly rent calculation
+
+### Backend
+- Next.js API routes
+- Prisma ORM
+- SQLite database
+- RESTful API design
+
+### Testing
+- Jest testing framework
+- React Testing Library
+- Unit tests for calculations
+- Component integration tests
+- API endpoint testing
+
+### Deployment
+- fly.io cloud platform
+- Docker containerization
+- Persistent volume for database
+- Environment variable management
+- CI/CD pipeline ready
+
+## Calculation Formulas
+
+### ROI Calculation
+```
+ROI = (Annual Cash Flow / Total Cash Invested) * 100
+```
+
+### Cash Flow Calculation
+```
+Monthly Cash Flow = Gross Rent - (Mortgage Payment + Operating Expenses)
+Annual Cash Flow = Monthly Cash Flow * 12
+```
+
+### NPV Calculation
+```
+NPV = Σ(Cash Flow / (1 + Discount Rate)^n) - Initial Investment
+```
+
+### Cap Rate Calculation
+```
+Cap Rate = Net Operating Income / Property Value
+```
+
+### NOI Calculation
+```
+NOI = Gross Rent - Vacancy Loss - Operating Expenses
+```
+
+## Investment Decision Criteria
+
+### Thumbs Up Conditions
+- ROI > 8% annually
+- Positive monthly cash flow
+- Cap rate > 6%
+- NOI covers all expenses plus buffer
+
+### Thumbs Down Conditions
+- ROI < 6% annually
+- Negative cash flow
+- High vacancy risk
+- Excessive operating expenses
+
+## Quality Assurance
+
+### Test Coverage
+- Unit tests for all calculation functions
+- Integration tests for API endpoints
+- Component testing for UI interactions
+- End-to-end workflow testing
+
+### Performance Requirements
+- Page load time < 3 seconds
+- Calculation response time < 500ms
+- Mobile-first responsive design
+- Accessibility compliance (WCAG 2.1)
+
+
+
+
+
+
+## Print/Export & Admin Features
+- Print Property Summary to PDF (landscape)
+- Print Compare Properties to PDF (landscape)
+- Admin-only database export (schema, JSON, CSV)
+- Admin-only database restore (JSON, CSV)
+- Secure API endpoints with authentication and role-based authorization
+- **Admin user management:** Admins can activate or deactivate user accounts from the Admin Dashboard. User status is shown (Active/Inactive) and can be toggled instantly. Deactivated users cannot log in until reactivated. All changes are immediate and fully auditable.
+- **Admin Documentation (Wiki):** Admins can view, add (modal), edit, delete, export, and import documentation/wiki entries in the Admin section, capturing troubleshooting chats and solutions from Copilot and the team. All documentation entries are stored in the SQLite database (via Prisma) and are available for future reference. Only admin users can add or edit documentation entries. Tag side menu for filtering (fully functional and TDD-tested as of September 2025). Pagination for efficient browsing of large knowledge bases (API and UI fully tested). All features are covered by Jest unit and integration tests. For production deployments on fly.io, a permanent volume is required for the SQLite database to persist documentation/wiki entries.
+- **Wiki Tag Filtering:** Tag filtering is robust and fully tested (fixed September 2025).
+- **Wiki Pagination:** Pagination logic is fully covered by Jest/RTL tests for both API and UI, including edge cases and navigation.
+
+## Features & Fixes (September 2025)
+- Real Estate Investment ROI calculations (cash flow, ROI, cap rate, projections)
+- Admin-only Wiki: add, edit, delete, tag filter, pagination, export/import (JSON, CSV)
+- Admin-only database export/import (JSON, CSV, schema)
+- CSV export now converts array fields (e.g., tags) to comma-separated strings (not JSON)
+- Archive management: soft delete, undo, visual indicators
+- User authentication/authorization (next-auth, role-based)
+- SQLite persistence (Prisma ORM)
+- Responsive UI (Tailwind, shadcn/ui)
+- All features covered by Jest/RTL unit and integration tests
+- 95%+ code coverage
+- Fly.io and Docker deployment ready
+
+## Testing & Quality Assurance
+- Jest unit tests for all calculation functions
+- Integration tests for all API endpoints (including admin export/restore)
+- React Testing Library for UI/component coverage
+- All tests pass as of September 2025
+
+## Configuration
+- Node v20.14.0
+- SQLite database (dev.db)
+- Prisma ORM
+- Next.js 14, React, TypeScript
+- Tailwind CSS, shadcn/ui
+- next-auth for authentication
+- Fly.io and Docker deployment
+
+## Troubleshooting
+- If you see JSON in CSV exports, update to the latest version (array fields now exported as comma-separated strings)
+- For persistent database on Fly.io, use a permanent volume
+- All admin features require admin role
+
+## API Docs
+- See `/api/admin/export` and `/api/admin/restore` for export/import endpoints
+- Wiki endpoints: `/api/admin/documentation` (CRUD)

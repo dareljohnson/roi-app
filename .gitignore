@@ -1,0 +1,43 @@
+# Node
+node_modules/
+.npm/
+
+# Build output
+.next/
+dist/
+coverage/
+
+# Environment files
+.env*
+
+# Logs
+*.log
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Prisma
+prisma/dev.db
+prisma/test.db
+prisma/seeds.ts
+
+# Misc
+*.tsbuildinfo
+
+# Ignore docs coverage and logs
+/docs/coverage/
+/docs/test-output.log
+
+# Ignore scripts output
+/scripts/*.log
+
+# Ignore Docker
+*.tar
+*.gz
+*.zip
+
+# Ignore fly.io config cache
+fly.toml.local

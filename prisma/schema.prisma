@@ -1,0 +1,216 @@
+model ApiCallLog {
+  id           String   @id @default(cuid())
+  ts           DateTime @default(now())
+  endpoint     String
+  method       String
+  status       Int
+  responseTime Int
+  error        Boolean
+
+  @@map("api_call_logs")
+}
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Note: SQLite does not support Prisma enums; using string for role with defaults
+
+model Property {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Property Details
+  address         String
+  propertyType    String   // "Single Family", "Multi-family", "Commercial", etc.
+  purchasePrice   Float
+  currentValue    Float?
+  squareFootage   Int?
+  lotSize         Float?
+  yearBuilt       Int?
+  bedrooms        Int?
+  bathrooms       Float?
+  condition       String?
+  
+  // Financing Details
+  downPayment     Float
+  interestRate    Float
+  loanTerm        Int      // in years
+  closingCosts    Float?   @default(0)
+  pmiRate         Float?   @default(0)
+  
+  // Rental Income
+  grossRent       Float
+  vacancyRate     Float    @default(0.05) // 5% default
+  
+  // Operating Expenses
+  propertyTaxes   Float?   @default(0)
+  insurance       Float?   @default(0)
+  propertyMgmt    Float?   @default(0)
+  maintenance     Float?   @default(0)
+  utilities       Float?   @default(0)
+  hoaFees         Float?   @default(0)
+  equipment       Float?   @default(0)
+  rehabCosts      Float?   @default(0)
+  
+  // Archive status
+  archived        Boolean  @default(false)
+
+  // Image URL
+  imageUrl        String?
+
+  // Calculated Results (stored for historical tracking)
+  analyses        Analysis[]
+
+  // Ownership
+  userId          String?
+  owner           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Walk-through notes
+  walkThroughNotes WalkThroughNote[]
+  
+  @@map("properties")
+}
+
+model Analysis {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  
+  // Foreign key
+  propertyId    String
+  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  // Financial Metrics
+  monthlyPayment      Float
+  cashFlow           Float   // monthly
+  annualCashFlow     Float
+  roi                Float   // percentage
+  capRate            Float   // percentage
+  npv                Float
+  irr                Float?  // internal rate of return
+  totalCashInvested  Float
+  
+  // Operating Income
+  netOperatingIncome Float   // annual NOI
+  effectiveGrossIncome Float // annual after vacancy
+  
+  // Recommendation
+  recommendation     String  // "BUY", "PASS", "CONSIDER"
+  recommendationScore Float  // 0-100 score
+  recommendationReasons String? // JSON stringified array of reasons
+
+  // Monthly projections (first 12 months) - stored as TEXT for SQLite
+  monthlyProjections String?
+
+  // Annual projections (5 years) - stored as TEXT for SQLite
+  annualProjections  String?
+  
+  @@map("analyses")
+}
+
+// Users for authentication and ownership
+model User {
+  id              String   @id @default(cuid())
+  name            String?
+  email           String   @unique
+  emailVerified   DateTime?
+  image           String?
+  role            String   @default("USER")
+  hashedPassword  String
+  lastLogin       DateTime?
+  lastIp          String?
+  active          Boolean  @default(true)
+
+  // Relations
+  accounts        Account[]
+  sessions        Session[]
+  properties      Property[]
+
+  documentationEntries DocumentationEntry[] @relation("UserDocumentationEntries")
+  walkThroughNotes     WalkThroughNote[]
+
+  @@map("users")
+}
+
+// NextAuth adapter models (from @auth/prisma-adapter)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?  @map("refreshToken")
+  access_token      String?  @map("accessToken")
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+// Admin Documentation/Wiki entries for troubleshooting chats
+model DocumentationEntry {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  title       String
+  content     String   // markdown or plain text
+  tags        String?  // comma-separated tags
+  authorId    String?
+  author      User?    @relation("UserDocumentationEntries", fields: [authorId], references: [id], onDelete: SetNull)
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Walk-through notes for properties
+model WalkThroughNote {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Content
+  title       String
+  content     String   // Detailed walk-through notes
+  rating      Int?     @default(0) // 1-5 star rating
+  
+  // Property association
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  // User association
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("walk_through_notes")
+}
