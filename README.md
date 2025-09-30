@@ -2,8 +2,8 @@
 
 ![Tests Passing](https://img.shields.io/badge/tests-passing-brightgreen)
 ![Coverage 95%+](https://img.shields.io/badge/coverage-95%25%2B-brightgreen)
-![Test Suites](https://img.shields.io/badge/test_suites-29_passed-brightgreen)
-![Total Tests](https://img.shields.io/badge/total_tests-180_passed-brightgreen)
+![Test Suites](https://img.shields.io/badge/test_suites-30_passed-brightgreen)
+![Total Tests](https://img.shields.io/badge/total_tests-186_passed-brightgreen)
 ![Deployment](https://img.shields.io/badge/fly.io_deployment-successful-brightgreen)
 
 ## Project Summary
@@ -18,7 +18,7 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 - **PDF Export**: Print property summaries and comparisons in landscape mode for professional reports.
 - **Authentication & Authorization**: next-auth with role-based access. Only admins can access sensitive features.
 - **Persistent Storage**: SQLite via Prisma. Production deployments require a permanent volume.
-- **Comprehensive TDD**: All features covered by Jest/RTL tests. **29 test suites (180 tests) all passing** with walk-through notes UI and API validation tests including modal confirmation dialogs and admin access controls. Form validation, error handling, and API endpoints fully tested. **Admin access bug fix, Prisma OpenSSL compatibility fix, and Walk-Through Overall Rating aggregation completed September 2025**.
+- **Comprehensive TDD**: All features covered by Jest/RTL tests. **30 test suites (186 tests) all passing** with walk-through notes UI and API validation tests including modal confirmation dialogs and admin access controls. Form validation, error handling, and API endpoints fully tested. **Admin access bug fix, Prisma OpenSSL compatibility fix, and Walk-Through Overall Rating aggregation completed September 2025**.
 - **Modern UI**: Built with Next.js 14, React, TypeScript, shadcn/ui, and Tailwind CSS.
 
 ## ✅ Deployment Status (September 30, 2025)
@@ -50,7 +50,7 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 - ✅ All schema migrations apply successfully without errors
 - ✅ **Login functionality now fully operational in production**
 - ✅ Authentication and user management fully functional
-- ✅ All 29 test suites (180 tests) continue passing after fixes
+- ✅ All 30 test suites (186 tests) continue passing after fixes
 - ✅ Application running live at https://real-estate-roi-app.fly.dev
 - ✅ Production database with admin users and sample data ready
 - ✅ Single clean machine deployment with properly synchronized volume
@@ -94,7 +94,7 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 ## Project Summary (2025)
 
 - **Authentication & Authorization:** next-auth with role-based access. Only admins can access sensitive features.
-- **Comprehensive TDD:** All features, including admin wiki, archive, projections, walk-through notes (with overall rating aggregation), and error handling, are covered by Jest/RTL tests. **All 29 test suites (180 tests) pass as of September 2025** with enhanced test isolation and database integrity.
+- **Comprehensive TDD:** All features, including admin wiki, archive, projections, walk-through notes (with overall rating aggregation), and error handling, are covered by Jest/RTL tests. **All 30 test suites (186 tests) pass as of September 2025** with enhanced test isolation and database integrity.
 
 ### Troubleshooting
 
@@ -452,6 +452,46 @@ npm run test:deployment        # Runs deployment-focused Jest tests
 | Seed step warning | Non-critical seed failure | Inspect logs; data may already exist |
 
 All deployment logic is additive—core application behavior unchanged.
+
+### Optional Deployment Controls (October 2025 Enhancement)
+
+You can now selectively skip migrations and/or seeding during a deployment using environment variables consumed by `scripts/deploy-db.sh`.
+
+| Variable | Default (if unset) | Truthy Values | Falsy Values | Action |
+|----------|--------------------|---------------|--------------|--------|
+| `DEPLOY_RUN_MIGRATIONS` | true | 1, true, yes, y, on | 0, false, no, n, off | Run or skip migration phase (baseline + fallback logic) |
+| `DEPLOY_RUN_SEED` | true | Same set | Same set | Run or skip seed script |
+
+Behavior notes:
+1. Unset = treated as enabled (secure-by-default).
+2. Comparison is case-insensitive; surrounding whitespace ignored.
+3. If you skip migrations and the DB file `/data/production.db` doesn't exist, the script logs a clear warning so you do not boot an empty schema silently.
+4. Seeding may be safely skipped for iterative production deploys after initial bootstrap.
+
+Examples:
+
+```bash
+# Deploy while skipping seed (recommended for routine prod deploys)
+DEPLOY_RUN_SEED=false flyctl deploy
+
+# Deploy skipping both migrations & seed (ONLY if schema already up to date)
+DEPLOY_RUN_MIGRATIONS=false DEPLOY_RUN_SEED=false flyctl deploy
+```
+
+Persistent config in `fly.toml`:
+
+```toml
+[env]
+  DEPLOY_RUN_SEED = "false"  # keep migrations enabled; skip reseeding
+```
+
+Local dry run:
+
+```bash
+DEPLOY_RUN_MIGRATIONS=false DEPLOY_RUN_SEED=false bash scripts/deploy-db.sh
+```
+
+Test Coverage: `src/tests/deployment/optional-migration-seed.test.ts` guards these flags against accidental removal.
 
 ## 🔧 API Reference
 
@@ -814,7 +854,7 @@ spawn tsx ENOENT
 - ✅ Reliable deployment on Fly.io and other platforms
 - ✅ Maintains all seed functionality with 100% equivalent behavior
 - ✅ Enhanced error handling and deployment feedback
-- ✅ All tests passing (29 test suites, 180 tests)
+- ✅ All tests passing (30 test suites, 186 tests)
 
 **Test Coverage:** All TDD tests continue to pass, validating that the conversion maintains perfect functional equivalence.
 

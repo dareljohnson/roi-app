@@ -2,7 +2,7 @@
 
 ## 🎯 PROJECT COMPLETION STATUS
 
-✅ **100% TEST PASS RATE ACHIEVED - 29 Test Suites, 180 Tests All Passing**
+✅ **100% TEST PASS RATE ACHIEVED - 30 Test Suites, 186 Tests All Passing**
 ✅ **TEST ISOLATION ISSUES RESOLVED (September 2025)**
 ✅ **WALK-THROUGH NOTES FULLY IMPLEMENTED & TESTED**
 ✅ **WALK-THROUGH NOTES UPDATE BUG FIXED (September 2025)**
@@ -27,7 +27,7 @@
 
 ### 🎯 Final Deployment Status - PRODUCTION READY ✅
 **Deployment**: ✅ All fixes successfully deployed to Fly.io with complete functionality
-**Testing**: ✅ All 29 test suites (180 tests) pass validating no regressions introduced  
+**Testing**: ✅ All 30 test suites (186 tests) pass validating no regressions introduced  
 **Production**: ✅ Database seeding, authentication, and all features working correctly
 **Live Application**: ✅ https://real-estate-roi-app.fly.dev fully operational
 **Admin Users**: ✅ admin@example.com and dareljohnson@gmail.com created with sample data
@@ -760,3 +760,37 @@ This real estate investment ROI application represents a complete, enterprise-gr
 - All deployment logic is additive—core application behavior unchanged
 - Deployment tests in src/tests/deployment verify all strategies
 - See README for troubleshooting and local verification steps
+ - See README for troubleshooting and local verification steps
+
+### 🆕 Optional Migration & Seed Controls (October 2025)
+
+Added requirement: Allow deployments to opt out of running migrations and/or the seed script when the target environment is already provisioned.
+
+Implementation:
+
+- Environment variables read by `scripts/deploy-db.sh`:
+  - `DEPLOY_RUN_MIGRATIONS` (default TRUE when unset)
+  - `DEPLOY_RUN_SEED` (default TRUE when unset)
+- Truthy tokens: `1, true, yes, y, on` (case-insensitive)
+- Falsy tokens: `0, false, no, n, off`
+- Safe default posture: If variables are not defined, both phases run.
+- Warning emitted if migrations are skipped and `/data/production.db` does not exist yet.
+
+Usage Examples:
+
+```
+# Skip only seeding for routine deploys
+DEPLOY_RUN_SEED=false flyctl deploy
+
+# Skip both (only if schema is already current)
+DEPLOY_RUN_MIGRATIONS=false DEPLOY_RUN_SEED=false flyctl deploy
+```
+
+Persistent config (`fly.toml`):
+
+```
+[env]
+  DEPLOY_RUN_SEED = "false"
+```
+
+Test Coverage: `optional-migration-seed.test.ts` ensures presence of flag logic; full suite now 30 suites / 186 tests passing.
