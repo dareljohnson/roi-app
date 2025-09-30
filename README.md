@@ -2,8 +2,8 @@
 
 ![Tests Passing](https://img.shields.io/badge/tests-passing-brightgreen)
 ![Coverage 95%+](https://img.shields.io/badge/coverage-95%25%2B-brightgreen)
-![Test Suites](https://img.shields.io/badge/test_suites-30_passed-brightgreen)
-![Total Tests](https://img.shields.io/badge/total_tests-186_passed-brightgreen)
+![Test Suites](https://img.shields.io/badge/test_suites-31_passed-brightgreen)
+![Total Tests](https://img.shields.io/badge/total_tests-187_passed-brightgreen)
 ![Deployment](https://img.shields.io/badge/fly.io_deployment-successful-brightgreen)
 
 ## Project Summary
@@ -18,7 +18,7 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 - **PDF Export**: Print property summaries and comparisons in landscape mode for professional reports.
 - **Authentication & Authorization**: next-auth with role-based access. Only admins can access sensitive features.
 - **Persistent Storage**: SQLite via Prisma. Production deployments require a permanent volume.
-- **Comprehensive TDD**: All features covered by Jest/RTL tests. **30 test suites (186 tests) all passing** with walk-through notes UI and API validation tests including modal confirmation dialogs and admin access controls. Form validation, error handling, and API endpoints fully tested. **Admin access bug fix, Prisma OpenSSL compatibility fix, and Walk-Through Overall Rating aggregation completed September 2025**.
+- **Comprehensive TDD**: All features covered by Jest/RTL tests. **31 test suites (187 tests) all passing** with walk-through notes UI and API validation tests including modal confirmation dialogs and admin access controls. Form validation, error handling, and API endpoints fully tested. **Admin access bug fix, Prisma OpenSSL compatibility fix, Walk-Through Overall Rating aggregation, seed credential guards, and startup placeholder warnings completed September 2025**.
 - **Modern UI**: Built with Next.js 14, React, TypeScript, shadcn/ui, and Tailwind CSS.
 
 ## ✅ Deployment Status (September 30, 2025)
@@ -50,7 +50,7 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 - ✅ All schema migrations apply successfully without errors
 - ✅ **Login functionality now fully operational in production**
 - ✅ Authentication and user management fully functional
-- ✅ All 30 test suites (186 tests) continue passing after fixes
+- ✅ All 31 test suites (187 tests) continue passing after fixes
 - ✅ Application running live at https://real-estate-roi-app.fly.dev
 - ✅ Production database with admin users and sample data ready
 - ✅ Single clean machine deployment with properly synchronized volume
@@ -94,7 +94,7 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 ## Project Summary (2025)
 
 - **Authentication & Authorization:** next-auth with role-based access. Only admins can access sensitive features.
-- **Comprehensive TDD:** All features, including admin wiki, archive, projections, walk-through notes (with overall rating aggregation), and error handling, are covered by Jest/RTL tests. **All 30 test suites (186 tests) pass as of September 2025** with enhanced test isolation and database integrity.
+- **Comprehensive TDD:** All features, including admin wiki, archive, projections, walk-through notes (with overall rating aggregation), and error handling, are covered by Jest/RTL tests. **All 31 test suites (187 tests) pass as of September 2025** with enhanced test isolation, database integrity, seed credential guard test, and startup placeholder key warnings.
 
 ### Deployment Troubleshooting (Seeding Phase)
 
@@ -108,6 +108,49 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 - **Bulk Operations**: Archive/unarchive properties individually, with full test coverage.
 - **Visual Indicators**: Archived properties display a prominent yellow "Archived" badge and faded card style for instant recognition (fully TDD-tested).
 - **API Filtering**: Backend API supports `archived` query for efficient data retrieval. Fully tested.
+
+### New: Seed Credential Guards & Startup Placeholder Warnings (September 2025)
+
+To prevent accidental creation of blank admin users and to surface misconfigured API keys in production, two safety features were added:
+
+1. Seed Credential Guards (`prisma/seed.js`)
+
+   - Reads the following environment variables:
+     - `SEED_ADMIN_EMAIL`
+     - `SEED_ADMIN_PASSWORD`
+     - `SEED_ADMIN2_EMAIL` (optional secondary admin)
+     - `SEED_ADMIN2_PASSWORD`
+   - If required credentials are missing/empty, admin user creation is skipped gracefully (exit code remains 0) and the sample property is also skipped (depends on primary admin).
+   - Fully covered by test: `src/tests/deployment/seed-skip.test.ts` (verifies skip messages & successful exit).
+   - Non-destructive: Will upsert (idempotent) if values are provided later.
+
+2. Startup Placeholder Warnings (`src/lib/startupWarnings.ts`)
+
+   - Runs automatically on server start in production.
+   - Logs warnings (non-fatal) if Google API keys are still placeholders:
+     - `GOOGLE_MAPS_API_KEY`
+     - `NEXT_PUBLIC_GOOGLE_PLACES_API_KEY`
+   - Emits informational message if seed admin credentials are absent so operators know why the seed didn’t create users.
+
+Recommended Production Setup (Fly.io):
+
+```bash
+fly secrets set \
+  SEED_ADMIN_EMAIL="admin@example.com" \
+  SEED_ADMIN_PASSWORD="StrongP@ssw0rd!" \
+  SEED_ADMIN2_EMAIL="ops@example.com" \
+  SEED_ADMIN2_PASSWORD="AnotherStrongP@ssw0rd" \
+  GOOGLE_MAPS_API_KEY="real_key_here" \
+  NEXT_PUBLIC_GOOGLE_PLACES_API_KEY="real_key_here"
+```
+
+If you intentionally skip seeding (e.g. `DEPLOY_RUN_SEED=false`), you can still create admins later by setting variables and re-running the seed script manually:
+
+```bash
+fly ssh console -C "node prisma/seed.js"
+```
+
+All behavior is additive—existing deployment flows continue to work without change if you do nothing.
 
 ### Square Footage Formatting
 
@@ -156,8 +199,8 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
   - Fully TDD-backed (3 new tests) without breaking existing clients (fields are optional additions)
 
 - All core features, including property analysis, admin controls, delayed delete/undo, archive, admin wiki, export/import, walk-through overall rating aggregation, and input formatting, are covered by automated tests.
- - **Fly.io Volume Permission Hardening (Sep 2025):** Adjusted container to run release phase as root so the mounted `/data` volume can have ownership corrected (`chown 1001:1001`). Entrypoint now drops privileges to unprivileged `nextjs` user for the app process, ensuring both security and successful creation of `production.db` on first deploy. Added automatic chmod/chown safeguards in `docker-entrypoint.sh` and `scripts/deploy-db.sh` to prevent `Permission denied (os error 13)` during `prisma db push` / `migrate deploy`.
- - **Runtime Privilege Drop Fix (Sep 2025):** Added `su-exec` to final image and fallback to `gosu`/root with warning. Resolves `exec: su-exec: not found` crash loop in Fly logs (exit code 127) so app boots properly after volume ownership adjustment.
+- **Fly.io Volume Permission Hardening (Sep 2025):** Adjusted container to run release phase as root so the mounted `/data` volume can have ownership corrected (`chown 1001:1001`). Entrypoint now drops privileges to unprivileged `nextjs` user for the app process, ensuring both security and successful creation of `production.db` on first deploy. Added automatic chmod/chown safeguards in `docker-entrypoint.sh` and `scripts/deploy-db.sh` to prevent `Permission denied (os error 13)` during `prisma db push` / `migrate deploy`.
+- **Runtime Privilege Drop Fix (Sep 2025):** Added `su-exec` to final image and fallback to `gosu`/root with warning. Resolves `exec: su-exec: not found` crash loop in Fly logs (exit code 127) so app boots properly after volume ownership adjustment.
 - Automated BUY/CONSIDER/PASS recommendations
 - Detailed reasoning for investment decisions
 - Market analysis and risk assessment
@@ -855,7 +898,7 @@ spawn tsx ENOENT
 - ✅ Reliable deployment on Fly.io and other platforms
 - ✅ Maintains all seed functionality with 100% equivalent behavior
 - ✅ Enhanced error handling and deployment feedback
-- ✅ All tests passing (30 test suites, 186 tests)
+- ✅ All tests passing (31 test suites, 187 tests)
 
 **Test Coverage:** All TDD tests continue to pass, validating that the conversion maintains perfect functional equivalence.
 

@@ -793,4 +793,11 @@ Persistent config (`fly.toml`):
   DEPLOY_RUN_SEED = "false"
 ```
 
-Test Coverage: `optional-migration-seed.test.ts` ensures presence of flag logic; full suite now 30 suites / 186 tests passing.
+Test Coverage: `optional-migration-seed.test.ts` ensures presence of flag logic; full suite now 31 suites / 187 tests passing (includes `seed-skip.test.ts` for credential guard behavior).
+
+### 🆕 Seed Credential Guards & Startup Placeholder Warnings (September 2025)
+
+- Seed script skips admin creation (and sample property) if `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` are missing or empty.
+- Optional secondary admin via `SEED_ADMIN2_EMAIL` / `SEED_ADMIN2_PASSWORD`.
+- New test `seed-skip.test.ts` validates skip path exits 0 and logs clear messages.
+- `startupWarnings.ts` logs non-fatal warnings in production if Google API keys are placeholders or seed creds absent.
