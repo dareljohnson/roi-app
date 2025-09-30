@@ -4,43 +4,53 @@ const bcrypt = require('bcryptjs')
 const prisma = new PrismaClient()
 
 async function seed() {
-  // Create admin user
-  const adminEmail = ''
-  const adminPassword = ''
-  const adminHashedPassword = await bcrypt.hash(adminPassword, 10)
-  const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {},
-    create: {
-      email: adminEmail,
-      name: 'Admin User',
-      role: 'ADMIN',
-      hashedPassword: adminHashedPassword,
-    },
-  })
-  console.log(`✅ Created admin user: ${adminEmail} (password: ${adminPassword})`)
+  // Create admin user (guard against empty credentials)
+  const adminEmail = process.env.SEED_ADMIN_EMAIL || ''
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD || ''
+  let admin = null
+  if (adminEmail && adminPassword) {
+    const adminHashedPassword = await bcrypt.hash(adminPassword, 10)
+    admin = await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: {},
+      create: {
+        email: adminEmail,
+        name: 'Admin User',
+        role: 'ADMIN',
+        hashedPassword: adminHashedPassword,
+      },
+    })
+    console.log(`✅ Created/ensured admin user: ${adminEmail}`)
+  } else {
+    console.log('⚠️  Skipping primary admin creation (SEED_ADMIN_EMAIL or SEED_ADMIN_PASSWORD not set).')
+  }
   console.log('🌱 Seeding database...')
 
-  // Create another admin user
-  const anotherAdminEmail = ''
-  const anotherAdminPassword = ''
-  const anotherAdminHashedPassword = await bcrypt.hash(anotherAdminPassword, 10)
-  const anotherAdmin = await prisma.user.upsert({
-    where: { email: anotherAdminEmail },
-    update: {},
-    create: {
-      email: anotherAdminEmail,
-      name: 'Admin One',
-      role: 'ADMIN',
-      hashedPassword: anotherAdminHashedPassword,
-    },
-  })
-  console.log(`✅ Created admin user: ${anotherAdminEmail} (password: ${anotherAdminPassword})`)
+  // Optional secondary admin
+  const anotherAdminEmail = process.env.SEED_ADMIN2_EMAIL || ''
+  const anotherAdminPassword = process.env.SEED_ADMIN2_PASSWORD || ''
+  if (anotherAdminEmail && anotherAdminPassword) {
+    const anotherAdminHashedPassword = await bcrypt.hash(anotherAdminPassword, 10)
+    await prisma.user.upsert({
+      where: { email: anotherAdminEmail },
+      update: {},
+      create: {
+        email: anotherAdminEmail,
+        name: 'Admin One',
+        role: 'ADMIN',
+        hashedPassword: anotherAdminHashedPassword,
+      },
+    })
+    console.log(`✅ Created/ensured secondary admin user: ${anotherAdminEmail}`)
+  } else {
+    console.log('ℹ️  No secondary admin credentials provided; skipping.')
+  }
 
   // Create sample property for testing
-  const sampleProperty = await prisma.property.create({
-    data: {
-      owner: { connect: { id: admin.id } },
+  if (admin) {
+    const sampleProperty = await prisma.property.create({
+      data: {
+        owner: { connect: { id: admin.id } },
       address: '123 Sample Street, Investment City, IC 12345',
       propertyType: 'Single Family',
       purchasePrice: 150000,
@@ -71,11 +81,13 @@ async function seed() {
       utilities: 0, // tenant pays
       hoaFees: 0,
       equipment: 50,
-      rehabCosts: 5000,
-    }
-  })
-
-  console.log(`✅ Created sample property: ${sampleProperty.address}`)
+        rehabCosts: 5000,
+      }
+    })
+    console.log(`✅ Created sample property: ${sampleProperty.address}`)
+  } else {
+    console.log('ℹ️  Skipping sample property creation (no admin user available).')
+  }
   console.log('🌱 Database seeding completed!')
 }
 

@@ -96,7 +96,7 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 - **Authentication & Authorization:** next-auth with role-based access. Only admins can access sensitive features.
 - **Comprehensive TDD:** All features, including admin wiki, archive, projections, walk-through notes (with overall rating aggregation), and error handling, are covered by Jest/RTL tests. **All 30 test suites (186 tests) pass as of September 2025** with enhanced test isolation and database integrity.
 
-### Troubleshooting
+### Deployment Troubleshooting (Seeding Phase)
 
 **API Endpoints:**
 
@@ -834,7 +834,8 @@ Update any references in your documentation or scripts to use these new paths.
 ### Database Seed Script: TypeScript to JavaScript Migration (2025 Fix) ✅ COMPLETED
 
 **Issue:** The `tsx` command was not available in the Docker production container, causing seed failures:
-```
+
+```text
 Error: Command failed with ENOENT: tsx prisma/seed.ts
 spawn tsx ENOENT
 ```
