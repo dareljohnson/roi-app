@@ -30,6 +30,9 @@ primary_region = 'ord'
   GOOGLE_MAPS_API_KEY="AIzaSyAeOwr0I19PqmRw5d5BDLfkwcgIofZ10hc"
   NEXT_PUBLIC_GOOGLE_PLACES_API_KEY="AIzaSyAeOwr0I19PqmRw5d5BDLfkwcgIofZ10hc"
 
+  DEPLOY_RUN_MIGRATIONS=true  # (default: true)
+  DEPLOY_RUN_SEED=false       # (default: true)
+
 [[mounts]]
   source = 'database_vol'
   destination = '/data'
