@@ -1,4 +1,3 @@
-import '@testing-library/jest-dom'
 import { TextEncoder, TextDecoder } from 'util'
 import { ReadableStream } from 'stream/web'
 
@@ -13,36 +12,38 @@ global.ReadableStream = ReadableStream
 // Mock Web APIs for Next.js API routes
 global.fetch = jest.fn()
 
-// Mock Request constructor
-global.Request = class Request {
-  constructor(input, init = {}) {
-    // Use defineProperty to avoid conflicts with NextRequest's getters
-    Object.defineProperty(this, 'url', {
-      value: typeof input === 'string' ? input : input.url,
-      writable: false,
-      configurable: true
-    })
-    this.method = init.method || 'GET'
-    this.headers = new Map()
-    this.body = init.body || null
-    
-    if (init.headers) {
-      if (init.headers instanceof Map) {
-        this.headers = new Map(init.headers)
-      } else if (typeof init.headers === 'object') {
-        Object.entries(init.headers).forEach(([key, value]) => {
-          this.headers.set(key, value)
-        })
+// Only add Request mock if it doesn't exist (to avoid conflicts with Jest DOM)
+if (typeof global.Request === 'undefined') {
+  global.Request = class Request {
+    constructor(input, init = {}) {
+      // Use defineProperty to avoid conflicts with NextRequest's getters
+      Object.defineProperty(this, 'url', {
+        value: typeof input === 'string' ? input : input.url,
+        writable: false,
+        configurable: true
+      })
+      this.method = init.method || 'GET'
+      this.headers = new Map()
+      this.body = init.body || null
+      
+      if (init.headers) {
+        if (init.headers instanceof Map) {
+          this.headers = new Map(init.headers)
+        } else if (typeof init.headers === 'object') {
+          Object.entries(init.headers).forEach(([key, value]) => {
+            this.headers.set(key, value)
+          })
+        }
       }
     }
-  }
-  
-  json() {
-    return Promise.resolve(JSON.parse(this.body || '{}'))
-  }
-  
-  text() {
-    return Promise.resolve(this.body || '')
+    
+    json() {
+      return Promise.resolve(JSON.parse(this.body || '{}'))
+    }
+    
+    text() {
+      return Promise.resolve(this.body || '')
+    }
   }
 }
 
@@ -155,6 +156,7 @@ jest.mock('next/navigation', () => ({
   }),
   useSearchParams: () => new URLSearchParams(),
   usePathname: () => '/',
+  useParams: () => ({ id: 'test-property-id' }),
 }))
 
 // Mock next-auth/react with proper session structure
@@ -208,4 +210,7 @@ if (typeof window !== 'undefined') {
       dispatchEvent: jest.fn(),
     })),
   });
+
+// Import jest-dom matchers after all polyfills are set up
+require('@testing-library/jest-dom')
 }

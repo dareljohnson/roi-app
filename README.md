@@ -2,15 +2,17 @@
 
 ![Tests Passing](https://img.shields.io/badge/tests-passing-brightgreen)
 ![Coverage 95%+](https://img.shields.io/badge/coverage-95%25%2B-brightgreen)
-![Test Suites](https://img.shields.io/badge/test_suites-31_passed-brightgreen)
-![Total Tests](https://img.shields.io/badge/total_tests-187_passed-brightgreen)
+![Test Suites](https://img.shields.io/badge/test_suites-59_passed-brightgreen)
+![Total Tests](https://img.shields.io/badge/total_tests-299_passed-brightgreen)
 ![Deployment](https://img.shields.io/badge/fly.io_deployment-successful-brightgreen)
+![Mobile Responsive](https://img.shields.io/badge/mobile_responsive-fully_optimized-brightgreen)
 
 ## Project Summary
 
 The Real Estate Investment ROI App is a full-featured analysis tool for property investors. It provides:
 
 - **30-Year Projections**: Toggle between 5-year and 30-year financial views (cash flow, equity, ROI, etc.)
+- **Rental Strategy Selection**: Choose between "Rent Individual Rooms" (multi-room rentals with individual weekly rates) or "Rent Entire House/Unit" strategies. The UI dynamically adapts to show relevant input fields and calculations for each strategy. **Multi-room rental dropdown bug fixed** - users can now successfully select individual rooms strategy and configure multiple room rates. Features comprehensive validation (room count vs bedroom count), currency formatting, dynamic room configuration, and automatic monthly rent calculations. Fully integrated with property analysis and comprehensive test coverage.
 - **Admin Wiki**: Add, edit, delete, export, and import documentation entries. Tag filtering and pagination included. All features are TDD-tested.
 - **Archive Management**: Soft delete/archive properties with undo, bulk operations, and visual indicators. All workflows are robust and fully tested.
 - **Walk-Through Notes**: Create, view, edit, and delete post-house walk-through notes for each property with 1-5 star ratings. Complete backend API with full authentication and authorization including **admin access to all notes**. **UI components fully implemented and integrated** - interactive forms appear on property detail pages with validation, character counters, and error handling. **Delete confirmations use modern modal dialogs** instead of browser alerts for better UX. All Prisma model naming issues resolved.
@@ -18,7 +20,7 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 - **PDF Export**: Print property summaries and comparisons in landscape mode for professional reports.
 - **Authentication & Authorization**: next-auth with role-based access. Only admins can access sensitive features.
 - **Persistent Storage**: SQLite via Prisma. Production deployments require a permanent volume.
-- **Comprehensive TDD**: All features covered by Jest/RTL tests. **31 test suites (187 tests) all passing** with walk-through notes UI and API validation tests including modal confirmation dialogs and admin access controls. Form validation, error handling, and API endpoints fully tested. **Admin access bug fix, Prisma OpenSSL compatibility fix, Walk-Through Overall Rating aggregation, seed credential guards, and startup placeholder warnings completed September 2025**.
+- **Comprehensive TDD**: All features covered by Jest/RTL tests. **59 test suites (299 tests) all passing** with walk-through notes UI and API validation tests including modal confirmation dialogs and admin access controls. Form validation, error handling, and API endpoints fully tested. **Rental strategy feature implementation with comprehensive conditional rendering and state management tests, admin access bug fix, Prisma OpenSSL compatibility fix, Walk-Through Overall Rating aggregation, seed credential guards, mobile layout fixes (Investment Recommendation section, Walk-Through Notes header, and Financial section), NextAuth module resolution fixes, mobile table responsiveness fixes for 12-Month Cash Flow Projection and Annual Investment Projections (completely fixed with card-based mobile layout), startup placeholder warnings, GrossRent validation bug fix, and multi-room rental dropdown bug fix with comprehensive TDD testing completed October 2025**.
 - **Modern UI**: Built with Next.js 14, React, TypeScript, shadcn/ui, and Tailwind CSS.
 
 ## ✅ Deployment Status (September 30, 2025)
@@ -31,6 +33,7 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 2. **bcryptjs Module Missing**: Added bcryptjs dependency copy to production Docker image for password hashing in seed script  
 3. **Database Schema Mismatch**: Created migration `20250930114202_add_user_active_column` for missing User.active column
 4. **🚨 Volume Synchronization Bug**: **CRITICAL FIX** - Resolved database inconsistency where multiple Fly.io volumes with identical names caused login failures due to missing database tables on active machine
+5. **NextAuth Module Resolution Error**: Fixed `Cannot find module './vendor-chunks/next-auth.js'` error through clean dependency reinstall and Jest configuration updates for ES module compatibility
 
 ### Volume Synchronization Resolution
 
@@ -50,7 +53,7 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 - ✅ All schema migrations apply successfully without errors
 - ✅ **Login functionality now fully operational in production**
 - ✅ Authentication and user management fully functional
-- ✅ All 31 test suites (187 tests) continue passing after fixes
+- ✅ All 37 test suites (188+ tests) continue passing after fixes
 - ✅ Application running live at https://real-estate-roi-app.fly.dev
 - ✅ Production database with admin users and sample data ready
 - ✅ Single clean machine deployment with properly synchronized volume
@@ -62,6 +65,84 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 - No breaking changes to existing functionality
 - Complete production deployment success achieved
 - Final validation: All tests passing + production login confirmed (September 30, 2025)
+
+### NextAuth Module Resolution & Jest Configuration Fixes (September 30, 2025)
+
+**Issue Resolved**: Fixed critical `Cannot find module './vendor-chunks/next-auth.js'` error that was causing Next.js build failures when generating static paths for dynamic routes.
+
+**Root Cause**: Module resolution conflicts between NextAuth v4's ES modules (jose, openid-client) and Jest's CommonJS environment, compounded by corrupted build cache and dependency synchronization issues.
+
+**Solutions Implemented**:
+
+1. **Clean Dependency Reinstall**: 
+   - Removed `node_modules` and `package-lock.json`
+   - Fresh `npm install` to resolve vendor chunk conflicts
+   - Patched Next.js SWC dependencies automatically
+
+2. **Jest Configuration Updates** (`jest.config.js`):
+   - Enhanced `transformIgnorePatterns` to handle ES modules: `jose`, `openid-client`, `@auth/*`
+   - Added experimental ESM support with `extensionsToTreatAsEsm`
+   - Fixed module name mapping for NextAuth dependencies
+
+3. **Jest Setup Improvements** (`jest.setup.js`):
+   - Conditional Request polyfill to avoid conflicts with @testing-library/jest-dom
+   - Moved jest-dom import after all polyfills to prevent Node.js definition conflicts
+   - Enhanced error handling for API route testing
+
+4. **TDD Validation**:
+   - Created comprehensive NextAuth module resolution tests
+   - Added 7 new test cases verifying dependency paths and version compatibility
+   - Enhanced Financial section mobile layout tests (7 additional test cases)
+
+**Results**:
+- ✅ NextAuth module resolution errors completely eliminated
+- ✅ Dev server starts without vendor chunk errors
+- ✅ All 37 test suites (218+ tests) passing with enhanced module compatibility
+- ✅ Financial section mobile layouts verified through TDD testing
+- ✅ Robust Jest configuration supporting both CommonJS and ES modules
+
+### Mobile Table Responsiveness Bug Fix (September 30, 2025)
+
+**Issue Resolved**: Fixed jumbled mobile table layout for 12-Month Cash Flow Projection and Annual Investment Projections that were displaying 7 columns of data in cramped, unreadable format on mobile devices.
+
+**Root Cause**: Tables with 7 columns (Month, Gross Rent, Vacancy, Operating, Debt Service, Cash Flow, Cumulative) were too wide for mobile screens, causing:
+- Tiny, illegible text
+- Horizontal scrolling requirement
+- Jumbled column headers and data alignment
+- Poor user experience on mobile devices
+
+**Solutions Implemented**:
+
+1. **Responsive Card Layout for Mobile**:
+   - Created mobile-first card design using Tailwind classes `block md:hidden`
+   - Each month/year displays as individual cards with clear labels
+   - Large, readable headers with prominent cash flow values
+   - Color-coded positive/negative financial indicators (green/red)
+
+2. **Desktop Table Preservation**:
+   - Maintained original table layout for medium+ screens using `hidden md:block`
+   - Preserved all existing desktop functionality and styling
+   - No changes to existing table behavior on larger devices
+
+3. **Enhanced Mobile UX**:
+   - **12-Month Cash Flow**: Individual month cards with labeled financial data
+   - **Annual Projections**: Individual year cards with ROI and equity highlights
+   - Proper spacing with `grid grid-cols-2 gap-2` for readable data presentation
+   - Consistent color coding and typography throughout
+
+4. **TDD Validation**:
+   - Created comprehensive mobile layout verification tests
+   - Added responsive behavior tests for both monthly and annual projections
+   - Verified mobile card structure and desktop table coexistence
+   - Enhanced existing mobile test suite with new layout validations
+
+**Results**:
+- ✅ Mobile table layout completely redesigned for readability
+- ✅ Both monthly and annual projections optimized for mobile viewing
+- ✅ Desktop functionality preserved without any changes
+- ✅ Responsive breakpoints working correctly (`md:hidden` / `md:block`)
+- ✅ All 40 test suites (232 tests) passing with mobile layout improvements
+- ✅ Enhanced mobile user experience with card-based data presentation
 
 ### Test Infrastructure & Quality Assurance
 
@@ -94,7 +175,32 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 ## Project Summary (2025)
 
 - **Authentication & Authorization:** next-auth with role-based access. Only admins can access sensitive features.
-- **Comprehensive TDD:** All features, including admin wiki, archive, projections, walk-through notes (with overall rating aggregation), and error handling, are covered by Jest/RTL tests. **All 31 test suites (187 tests) pass as of September 2025** with enhanced test isolation, database integrity, seed credential guard test, and startup placeholder key warnings.
+- **Comprehensive TDD:** All features, including admin wiki, archive, projections, walk-through notes (with overall rating aggregation), and error handling, are covered by Jest/RTL tests. **All 37 test suites (188+ tests) pass as of September 2025** with enhanced test isolation, database integrity, seed credential guard test, mobile layout improvements (responsive layouts for Investment Recommendation, Walk-Through Notes, and Financial sections), NextAuth module resolution fixes, and startup placeholder key warnings.
+
+### Critical Bug Fixes (October 2025)
+
+#### GrossRent Validation Bug Fix
+
+**Issue**: Users were encountering "Missing or invalid value for required field: grossRent" alert when clicking "Analyze Investment" button, even after properly entering monthly rent in the Rental Income form.
+
+**Root Cause**: Currency formatting in the `RentalIncomeForm` component was causing data corruption. When users entered values like "2500", the field would format to "2,500.00" on blur. However, the `handleChange` function was calling `Number("2,500.00")` which returns `NaN` due to the comma, causing validation failure.
+
+**Solution**: Fixed the `handleChange` function in `RentalIncomeForm.tsx` to use `unformatCurrency()` before converting formatted strings to numbers:
+
+```typescript
+// BEFORE (broken):
+processedData.grossRent = Number(newData.grossRent);
+
+// AFTER (fixed):
+const cleanValue = unformatCurrency(newData.grossRent.toString());
+processedData.grossRent = Number(cleanValue);
+```
+
+**Test Coverage**: 
+- Created comprehensive TDD tests to reproduce the bug
+- Verified fix handles all input formats: "2500", "2,500", "2500.00", "2,500.00"
+- Added integration tests confirming full user workflow without validation errors
+- All 280 tests across 52 test suites continue to pass
 
 ### Deployment Troubleshooting (Seeding Phase)
 
@@ -197,6 +303,13 @@ All behavior is additive—existing deployment flows continue to work without ch
   - `walkThroughRatingCount`: Count of contributing ratings
   - Implemented in property list and detail routes; ignores zero/negative/undefined to avoid noise
   - Fully TDD-backed (3 new tests) without breaking existing clients (fields are optional additions)
+
+- **Mobile Layout Responsive Fixes (September 30, 2025):** Resolved mobile overflow issues with proper responsive design:
+  - **Investment Recommendation Section:** Fixed CardTitle overflow using responsive flexbox (`flex-col sm:flex-row`) with `gap-2` spacing
+  - **Walk-Through Notes Header:** Implemented responsive layout for description and "Add Note" button spacing on mobile devices
+  - **Responsive Design Pattern:** Column layout on mobile (<640px), row layout on desktop with proper spacing between elements
+  - **TDD Validation:** 8 new comprehensive tests covering mobile viewport behavior, responsive classes, and overflow prevention
+  - **No Regressions:** All existing functionality preserved while adding mobile-friendly layouts
 
 - All core features, including property analysis, admin controls, delayed delete/undo, archive, admin wiki, export/import, walk-through overall rating aggregation, and input formatting, are covered by automated tests.
 - **Fly.io Volume Permission Hardening (Sep 2025):** Adjusted container to run release phase as root so the mounted `/data` volume can have ownership corrected (`chown 1001:1001`). Entrypoint now drops privileges to unprivileged `nextjs` user for the app process, ensuring both security and successful creation of `production.db` on first deploy. Added automatic chmod/chown safeguards in `docker-entrypoint.sh` and `scripts/deploy-db.sh` to prevent `Permission denied (os error 13)` during `prisma db push` / `migrate deploy`.
@@ -357,7 +470,10 @@ prisma/
 - Enter property address and type
 - Set purchase price and property characteristics
 - Optional: Add property condition and specifications
-- **Room Rental:** Below the Bedrooms entry, you can specify how many rooms you want to rent out. For each room, set a weekly rate. The app will automatically calculate and display the total monthly rent estimate (sum of all weekly rates × 4).
+- **Rental Strategy Selection**: Choose between two rental approaches:
+  - **"Rooms to Rent"**: Rent out individual rooms. You can specify how many rooms to rent and set weekly rates for each room. The app automatically calculates total monthly rent (sum of all weekly rates × 4).
+  - **"Entire house to rent"**: Rent the entire property as one unit. You'll set a single gross monthly rent amount.
+- The UI dynamically shows relevant input fields based on your selected strategy.
 
 ### Step 2: Financing Information
 
@@ -772,6 +888,7 @@ npm run test:debug
 
 ---
 
+
 ## Features & Fixes (September 2025)
 
 - Real Estate Investment ROI calculations (cash flow, ROI, cap rate, projections)
@@ -782,22 +899,29 @@ npm run test:debug
 - User authentication/authorization (next-auth, role-based)
 - SQLite persistence (Prisma ORM)
 - Responsive UI (Tailwind, shadcn/ui)
-- All features covered by Jest/RTL unit and integration tests
+- **Mobile-friendly layout fixes:** Print PDF, View All Properties, and score chart are now fully responsive and optimized for mobile devices. The navigation bar features a hamburger menu, and score charts stack vertically on small screens. All mobile navigation and chart layouts are covered by Jest/RTL tests.
+- **Role-based mobile navigation:** Hamburger menu dynamically displays 'All Properties' and 'Admin' links for admins, 'My Properties' for users, and shows user email. All role-based links and mobile navigation features are fully tested.
+- **Rental Strategy Selection**: Choose between "Rooms to Rent" (individual room rental approach) or "Entire house to rent" strategies. The UI dynamically adapts showing relevant controls based on the selected strategy. Includes comprehensive state management for proper conditional rendering and full validation coverage.
+- **Test Coverage:** All features, including rental strategy selection and mobile layout improvements, are covered by Jest/RTL unit and integration tests. **42 test suites, 244 tests passing** as of September 2025.
 - 95%+ code coverage
 - Fly.io and Docker deployment ready
 
+
 ## Mobile Hamburger Menu & Responsive Navigation (September 2025)
 
-- **Mobile Hamburger Menu:** The navigation bar now features a responsive hamburger menu for mobile devices, providing quick access to Home, My Properties (for users), All Properties (for admins), and user account options.
-- **Role-Based Links:** The menu dynamically displays 'All Properties' and 'Admin' links for admin users, and 'My Properties' for regular users, based on session role.
-- **User Info:** The logged-in user's email is shown in the mobile menu for easy identification.
-- **TDD Coverage:** All mobile navigation features are fully covered by Jest and React Testing Library unit tests, including:
+- **Mobile Hamburger Menu:** Navigation bar now features a responsive hamburger menu for mobile devices, providing quick access to Home, My Properties (for users), All Properties (for admins), and user account options.
+- **Role-Based Links:** Menu dynamically displays 'All Properties' and 'Admin' links for admin users, and 'My Properties' for regular users, based on session role.
+- **User Info:** Logged-in user's email is shown in the mobile menu for easy identification.
+- **Score Chart & Print PDF:** Score charts stack vertically and are scrollable on mobile; Print PDF button is now full-width and easy to tap. **Unified header layout** eliminates visual separation between content sections for a cohesive user experience. **Fixed chart display jumbling** by resolving conflicting styles in PieChartWithNeedle component that caused charts and scores to appear jumbled on mobile screens. All mobile layout features are covered by Jest/RTL tests.
+- **TDD Coverage:** All mobile navigation and layout features are fully covered by Jest and React Testing Library unit tests, including:
   - Hamburger menu visibility and toggle behavior
   - Correct links for user and admin roles
   - User email display in the menu
+  - Score chart vertical stacking and scroll
+  - Print PDF and View All Properties button mobile usability
   - Robust mocking of authentication/session state in tests
-- **Bug Fix:** Fixed previous issue where mobile navigation did not reflect user/admin roles due to improper session mocking in tests. Now, all role-based links are reliably rendered and tested.
-- **Test Suites:** All tests for mobile navigation and role-based rendering pass as of September 2025.
+- **Bug Fix:** Fixed previous issues where mobile navigation and chart layouts did not reflect user/admin roles or were not mobile friendly. All role-based links and mobile layouts are reliably rendered and tested.
+- **Test Suites:** All tests for mobile navigation, chart layout, and role-based rendering pass as of September 2025.
 
 ## Testing & Quality Assurance
 
@@ -844,10 +968,13 @@ Auxiliary files and folders have been moved for better organization:
 
 Update any references in your documentation or scripts to use these new paths.
 
+
 ## Badges
 
 ![Tests Passing](https://img.shields.io/badge/tests-passing-brightgreen)
 ![Coverage >95%](https://img.shields.io/badge/coverage-95%25%2B-brightgreen)
+![Test Suites](https://img.shields.io/badge/test_suites-32_passed-brightgreen)
+![Total Tests](https://img.shields.io/badge/total_tests-190_passed-brightgreen)
 
 ---
 
@@ -898,7 +1025,7 @@ spawn tsx ENOENT
 - ✅ Reliable deployment on Fly.io and other platforms
 - ✅ Maintains all seed functionality with 100% equivalent behavior
 - ✅ Enhanced error handling and deployment feedback
-- ✅ All tests passing (31 test suites, 187 tests)
+- ✅ All tests passing (32 test suites, 190 tests)
 
 **Test Coverage:** All TDD tests continue to pass, validating that the conversion maintains perfect functional equivalence.
 

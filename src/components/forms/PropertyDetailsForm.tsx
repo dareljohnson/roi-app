@@ -1,18 +1,12 @@
 
 'use client'
-// Helper: format integer with commas (e.g., 1434 -> 1,434)
-function formatInteger(value: string | number) {
-  if (value === '' || value === null || value === undefined) return '';
-  const num = typeof value === 'string' ? parseInt(value.replace(/[^\d\-]/g, '')) : value;
-  if (isNaN(num)) return '';
-  return num.toLocaleString('en-US');
-}
+
 
 import { useState, useRef, useEffect } from 'react'
 // Google Maps JavaScript SDK Autocomplete integration
 const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
 
-import { PropertyAnalysisInput, PROPERTY_TYPES, PROPERTY_CONDITIONS, RoomRental } from '@/types/property'
+import { PropertyAnalysisInput, PROPERTY_TYPES, PROPERTY_CONDITIONS, RoomRental, RENTAL_STRATEGIES } from '@/types/property'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,6 +17,14 @@ declare global {
   interface Window {
     google: any;
   }
+}
+
+// Helper: format integer with commas (e.g., 1434 -> 1,434)
+function formatInteger(value: string | number) {
+  if (value === '' || value === null || value === undefined) return '';
+  const num = typeof value === 'string' ? parseInt(value.replace(/[^\d\-]/g, '')) : value;
+  if (isNaN(num)) return '';
+  return num.toLocaleString('en-US');
 }
 
 // Helper: format number as currency string with commas and 2 decimals
@@ -58,7 +60,9 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
     bathrooms: data.bathrooms || '',
     condition: data.condition || 'Good',
     imageUrl: data.imageUrl || '',
+    rentalStrategy: data.rentalStrategy || 'entire-house',
     rentableRooms: data.rentableRooms || [],
+    grossRent: data.grossRent || '',
     // Expense fields for persistence
     propertyTaxes: data.propertyTaxes || '',
     insurance: data.insurance || '',
@@ -72,6 +76,7 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
   // Room rental state
   const [numRoomsToRent, setNumRoomsToRent] = useState<number>(formData.rentableRooms?.length || 0);
   const [roomRates, setRoomRates] = useState<number[]>(formData.rentableRooms?.map((r: any) => r.weeklyRate) || []);
+  const [roomValidationError, setRoomValidationError] = useState<string>('');
 
   // Calculate total monthly rent from room rates
   const totalMonthlyRoomRent = roomRates.reduce((sum, rate) => sum + (Number(rate) || 0), 0) * 4;
@@ -179,13 +184,14 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
           // Convert string fields to numbers where needed for onUpdate
           const processedData: Partial<PropertyAnalysisInput> = {
             ...updated,
-            purchasePrice: updated.purchasePrice !== '' ? Number(updated.purchasePrice) : undefined,
-            currentValue: updated.currentValue !== '' ? Number(updated.currentValue) : undefined,
-            squareFootage: updated.squareFootage !== '' ? Number(updated.squareFootage) : undefined,
+            purchasePrice: updated.purchasePrice !== '' ? Number(unformatCurrency(updated.purchasePrice.toString())) : undefined,
+            currentValue: updated.currentValue !== '' ? Number(unformatCurrency(updated.currentValue.toString())) : undefined,
+            squareFootage: updated.squareFootage !== '' ? Number(unformatCurrency(updated.squareFootage.toString())) : undefined,
             lotSize: updated.lotSize !== '' ? Number(updated.lotSize) : undefined,
             yearBuilt: updated.yearBuilt !== '' ? Number(updated.yearBuilt) : undefined,
             bedrooms: updated.bedrooms !== '' ? Number(updated.bedrooms) : undefined,
             bathrooms: updated.bathrooms !== '' ? Number(updated.bathrooms) : undefined,
+            grossRent: updated.grossRent !== '' && updated.grossRent !== undefined ? Number(unformatCurrency(updated.grossRent.toString())) : undefined,
             propertyTaxes: updated.propertyTaxes !== '' ? Number(updated.propertyTaxes) : undefined,
             insurance: updated.insurance !== '' ? Number(updated.insurance) : undefined,
             propertyMgmt: updated.propertyMgmt !== '' ? Number(updated.propertyMgmt) : undefined,
@@ -204,13 +210,14 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
           const updated = { ...prev, imageUrl: '' };
           const processedData: Partial<PropertyAnalysisInput> = {
             ...updated,
-            purchasePrice: updated.purchasePrice !== '' ? Number(updated.purchasePrice) : undefined,
-            currentValue: updated.currentValue !== '' ? Number(updated.currentValue) : undefined,
-            squareFootage: updated.squareFootage !== '' ? Number(updated.squareFootage) : undefined,
+            purchasePrice: updated.purchasePrice !== '' ? Number(unformatCurrency(updated.purchasePrice.toString())) : undefined,
+            currentValue: updated.currentValue !== '' ? Number(unformatCurrency(updated.currentValue.toString())) : undefined,
+            squareFootage: updated.squareFootage !== '' ? Number(unformatCurrency(updated.squareFootage.toString())) : undefined,
             lotSize: updated.lotSize !== '' ? Number(updated.lotSize) : undefined,
             yearBuilt: updated.yearBuilt !== '' ? Number(updated.yearBuilt) : undefined,
             bedrooms: updated.bedrooms !== '' ? Number(updated.bedrooms) : undefined,
             bathrooms: updated.bathrooms !== '' ? Number(updated.bathrooms) : undefined,
+            grossRent: updated.grossRent !== '' && updated.grossRent !== undefined ? Number(unformatCurrency(updated.grossRent.toString())) : undefined,
             propertyTaxes: updated.propertyTaxes !== '' ? Number(updated.propertyTaxes) : undefined,
             insurance: updated.insurance !== '' ? Number(updated.insurance) : undefined,
             propertyMgmt: updated.propertyMgmt !== '' ? Number(updated.propertyMgmt) : undefined,
@@ -234,34 +241,14 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
   const handleChange = (field: string, value: any) => {
     const newData = { ...formData, [field]: value };
     setFormData(newData);
+    
+    // Clear room validation error when bedrooms change
+    if (field === 'bedrooms') {
+      setRoomValidationError('');
+    }
   };
 
-  // Call onUpdate with all relevant fields whenever formData changes
-  useEffect(() => {
-    const processedData: Partial<PropertyAnalysisInput> = {
-      address: formData.address,
-      propertyType: formData.propertyType,
-      purchasePrice: formData.purchasePrice !== '' ? Number(unformatCurrency(formData.purchasePrice.toString())) : undefined,
-      currentValue: formData.currentValue !== '' ? Number(unformatCurrency(formData.currentValue.toString())) : undefined,
-      squareFootage: formData.squareFootage !== '' ? Number(unformatCurrency(formData.squareFootage.toString())) : undefined,
-      lotSize: formData.lotSize !== '' ? Number(formData.lotSize) : undefined,
-      yearBuilt: formData.yearBuilt !== '' ? Number(formData.yearBuilt) : undefined,
-      bedrooms: formData.bedrooms !== '' ? Number(formData.bedrooms) : undefined,
-      bathrooms: formData.bathrooms !== '' ? Number(formData.bathrooms) : undefined,
-      condition: formData.condition,
-      imageUrl: formData.imageUrl,
-      rentableRooms: formData.rentableRooms,
-      propertyTaxes: formData.propertyTaxes !== '' ? Number(formData.propertyTaxes) : undefined,
-      insurance: formData.insurance !== '' ? Number(formData.insurance) : undefined,
-      propertyMgmt: formData.propertyMgmt !== '' ? Number(formData.propertyMgmt) : undefined,
-      maintenance: formData.maintenance !== '' ? Number(formData.maintenance) : undefined,
-      utilities: formData.utilities !== '' ? Number(formData.utilities) : undefined,
-      hoaFees: formData.hoaFees !== '' ? Number(formData.hoaFees) : undefined,
-      equipment: formData.equipment !== '' ? Number(formData.equipment) : undefined,
-      rehabCosts: formData.rehabCosts !== '' ? Number(formData.rehabCosts) : undefined,
-    };
-    onUpdate(processedData);
-  }, [formData]);
+
 
   // Call onUpdate with properly typed data whenever formData changes
   useEffect(() => {
@@ -277,6 +264,8 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
     }
     // Always include imageUrl, even if empty string
     processedData.imageUrl = formData.imageUrl ?? '';
+    // Always include rental strategy
+    processedData.rentalStrategy = formData.rentalStrategy;
     if (formData.purchasePrice && formData.purchasePrice !== '') {
       processedData.purchasePrice = Number(unformatCurrency(formData.purchasePrice.toString()));
     }
@@ -300,11 +289,18 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
     }
     if (formData.rentableRooms) {
       processedData.rentableRooms = formData.rentableRooms;
-      // Calculate grossRent from room rates if available
-      if (Array.isArray(formData.rentableRooms) && formData.rentableRooms.length > 0) {
+      // Calculate grossRent from room rates only if using room rental strategy
+      if (formData.rentalStrategy === 'individual-rooms' && 
+          Array.isArray(formData.rentableRooms) && 
+          formData.rentableRooms.length > 0) {
         const totalMonthlyRoomRent = formData.rentableRooms.reduce((sum, r) => sum + (Number(r.weeklyRate) || 0), 0) * 4;
         processedData.grossRent = totalMonthlyRoomRent;
       }
+    }
+    
+    // Handle grossRent for entire-house strategy
+    if (formData.rentalStrategy === 'entire-house' && formData.grossRent && formData.grossRent !== '') {
+      processedData.grossRent = Number(unformatCurrency(formData.grossRent.toString()));
     }
   // Add expense fields for persistence (convert to number)
   if (formData.propertyTaxes !== undefined) processedData.propertyTaxes = Number(formData.propertyTaxes) || 0;
@@ -321,12 +317,24 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
 
   // Handle number of rooms to rent change
   const handleNumRoomsChange = (value: number) => {
-    setNumRoomsToRent(value);
+    const bedrooms = Number(formData.bedrooms) || 0;
+    const validValue = Math.max(0, value);
+    
+    // Clear any existing error
+    setRoomValidationError('');
+    
+    // Validate that rooms don't exceed bedrooms when bedrooms is specified
+    if (bedrooms > 0 && validValue > bedrooms) {
+      setRoomValidationError(`Cannot rent more rooms (${validValue}) than total bedrooms (${bedrooms})`);
+      return;
+    }
+    
+    setNumRoomsToRent(validValue);
     let newRates = [...roomRates];
-    if (value > roomRates.length) {
-      newRates = [...roomRates, ...Array(value - roomRates.length).fill(0)];
-    } else if (value < roomRates.length) {
-      newRates = newRates.slice(0, value);
+    if (validValue > roomRates.length) {
+      newRates = [...roomRates, ...Array(validValue - roomRates.length).fill(0)];
+    } else if (validValue < roomRates.length) {
+      newRates = newRates.slice(0, validValue);
     }
     setRoomRates(newRates);
     // Update formData and parent
@@ -608,9 +616,83 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
             </div>
           </div>
 
-          {/* Room Rental Feature */}
-          <div className="border rounded-md p-4 mt-2 bg-gray-50">
-            <Label htmlFor="numRoomsToRent">Rooms to Rent</Label>
+          {/* Rental Strategy Selection */}
+          <div className="border rounded-md p-4 mt-2 bg-blue-50">
+            <Label htmlFor="rentalStrategy">Rental Strategy *</Label>
+
+            <select
+              id="rentalStrategy"
+              value={formData.rentalStrategy}
+              onChange={(e) => {
+                const newStrategy = e.target.value as 'entire-house' | 'individual-rooms';
+                
+                // Update formData in a single state update to avoid race conditions
+                setFormData(prev => {
+                  const newData = { ...prev, rentalStrategy: newStrategy };
+                  
+                  // Reset appropriate data when switching strategies
+                  if (newStrategy === 'entire-house') {
+                    // Clear room rental data
+                    newData.rentableRooms = [];
+                    newData.grossRent = prev.grossRent; // Keep existing grossRent for entire-house
+                  } else if (newStrategy === 'individual-rooms') {
+                    // Clear entire-house rental data
+                    newData.grossRent = '';
+                  }
+                  
+                  return newData;
+                });
+                
+                // Also reset related UI state
+                if (newStrategy === 'entire-house') {
+                  setNumRoomsToRent(0);
+                  setRoomRates([]);
+                }
+              }}
+              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="entire-house">Rent Entire House/Unit</option>
+              <option value="individual-rooms">Rent Individual Rooms</option>
+            </select>
+            <p className="text-xs text-gray-600 mt-1">
+              Choose whether you'll rent the entire property to one tenant or rent individual rooms to multiple tenants
+            </p>
+          </div>
+
+          {/* Monthly Gross Rent - Only show when entire-house strategy is selected */}
+          {formData.rentalStrategy === 'entire-house' && (
+            <div className="border rounded-md p-4 mt-2 bg-gray-50">
+              <Label htmlFor="grossRent">Monthly Gross Rent *</Label>
+              <Input
+                id="grossRent"
+                type="text"
+                value={
+                  focusedField === 'grossRent'
+                    ? unformatCurrency(formData.grossRent?.toString() || '')
+                    : formatCurrency(formData.grossRent || '')
+                }
+                onFocus={() => setFocusedField('grossRent')}
+                onBlur={(e) => {
+                  setFocusedField(null);
+                  const formatted = formatCurrency(e.target.value);
+                  handleChange('grossRent', formatted);
+                }}
+                onChange={(e) => handleChange('grossRent', e.target.value)}
+                placeholder="2,000.00"
+                className="mt-1 w-48"
+                inputMode="decimal"
+                step="0.01"
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                Expected monthly rental income for the entire property
+              </p>
+            </div>
+          )}
+
+          {/* Room Rental Feature - Only show when individual-rooms strategy is selected */}
+          {formData.rentalStrategy === 'individual-rooms' && (
+            <div className="border rounded-md p-4 mt-2 bg-gray-50">
+              <Label htmlFor="numRoomsToRent">Rooms to Rent</Label>
             <Input
               id="numRoomsToRent"
               type="number"
@@ -620,6 +702,9 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
               onChange={e => handleNumRoomsChange(Number(e.target.value))}
               className="mt-1 w-32"
             />
+            {roomValidationError && (
+              <p className="text-red-500 text-sm mt-1">{roomValidationError}</p>
+            )}
             {numRoomsToRent > 0 && (
               <div className="mt-2 space-y-2">
                 {Array.from({ length: numRoomsToRent }).map((_, idx) => (
@@ -652,7 +737,8 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
                 </div>
               </div>
             )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

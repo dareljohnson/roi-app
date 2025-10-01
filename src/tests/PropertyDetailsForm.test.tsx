@@ -57,6 +57,11 @@ describe('PropertyDetailsForm', () => {
         onNext={jest.fn()}
       />
     );
+    
+    // First, set rental strategy to individual-rooms to show the room controls
+    const rentalStrategySelect = screen.getByLabelText(/Rental Strategy/i);
+    fireEvent.change(rentalStrategySelect, { target: { value: 'individual-rooms' } });
+
     // Set number of rooms to rent
     const numRoomsInput = screen.getByLabelText(/Rooms to Rent/i);
     fireEvent.change(numRoomsInput, { target: { value: '3' } });

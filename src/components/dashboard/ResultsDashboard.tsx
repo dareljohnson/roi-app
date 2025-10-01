@@ -301,7 +301,7 @@ export function ResultsDashboard({ results, propertyData, showHeader = false, de
       {/* Investment Recommendation */}
       <Card className={`border-2 ${getRecommendationColor()}`}>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+          <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <span className="flex items-center gap-2">
               {getRecommendationIcon()}
               Investment Recommendation: {results.recommendation}
@@ -489,7 +489,48 @@ export function ResultsDashboard({ results, propertyData, showHeader = false, de
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              {/* Mobile Card Layout - Shows on small screens */}
+              <div className="block md:hidden space-y-3">
+                {results.monthlyProjections.map((projection, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-4 border">
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="font-semibold text-lg">Month {projection.month}</h4>
+                      <div className={`text-lg font-bold ${projection.cashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(projection.cashFlow)}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Gross Rent:</span>
+                        <span className="font-medium">{formatCurrency(projection.grossRent)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Vacancy:</span>
+                        <span className="font-medium text-red-600">-{formatCurrency(projection.vacancyLoss)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Operating:</span>
+                        <span className="font-medium text-red-600">-{formatCurrency(projection.operatingExpenses)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Debt Service:</span>
+                        <span className="font-medium text-red-600">-{formatCurrency(projection.debtService)}</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-gray-700">Cumulative Cash Flow:</span>
+                        <span className={`font-bold ${projection.cumulativeCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(projection.cumulativeCashFlow)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table Layout - Shows on medium+ screens */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
@@ -552,7 +593,48 @@ export function ResultsDashboard({ results, propertyData, showHeader = false, de
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              {/* Mobile Card Layout - Shows on small screens */}
+              <div className="block md:hidden space-y-3">
+                {results.annualProjections.slice(0, projectionYears).map((projection, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-4 border">
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="font-semibold text-lg">Year {projection.year}</h4>
+                      <div className={`text-lg font-bold ${projection.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatPercent(projection.roi)}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Gross Rent:</span>
+                        <span className="font-medium">{formatCurrency(projection.grossRent)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Annual Cash Flow:</span>
+                        <span className={`font-medium ${projection.cashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(projection.cashFlow)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Property Value:</span>
+                        <span className="font-medium">{formatCurrency(projection.propertyValue)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Equity:</span>
+                        <span className="font-medium">{formatCurrency(projection.equity)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total Return:</span>
+                        <span className={`font-medium ${projection.totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(projection.totalReturn)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table Layout - Shows on medium+ screens */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">

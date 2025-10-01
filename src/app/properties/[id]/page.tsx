@@ -273,55 +273,67 @@ export default function PropertyDetailPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between print:flex-col print:items-start print:gap-2">
-        <div className="flex items-center gap-4 print:gap-2">
-          <Link href="/properties" className="print:hidden">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to History
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold">{property.address}</h1>
-            <p className="text-gray-600">
-              {property.propertyType} • {property.bedrooms ? `${property.bedrooms} bed` : ''}{property.bedrooms && property.bathrooms ? ' / ' : ''}{property.bathrooms ? `${property.bathrooms} bath` : ''} • Analyzed {new Date(property.createdAt).toLocaleDateString()}
-              {property.grossRent && property.squareFootage ? (
-                <>
-                  <span className="mx-2">•</span>
-                  <span className="text-xs text-blue-700">Rent/Sq Ft: </span>
-                  <span className="text-xs font-semibold">${(property.grossRent / property.squareFootage).toFixed(2)}</span>
-                </>
-              ) : null}
-              {walkRating && (
-                <>
-                  <span className="mx-2">•</span>
-                  <span className="text-xs text-amber-700">Walk-Through Rating: </span>
-                  {walkRating.avg === null ? (
-                    <span className="text-xs font-semibold text-gray-500">No ratings</span>
-                  ) : (
-                    <span className="text-xs font-semibold">
-                      {walkRating.avg.toFixed(1)}⭐ ({walkRating.count})
-                    </span>
-                  )}
-                </>
-              )}
-            </p>
+      {/* Unified header section with consistent styling and layout */}
+      <div className="bg-white border rounded-lg p-4 md:p-6 shadow-sm">
+        <div className="flex flex-col space-y-4">
+          {/* Top row: Back button and title */}
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+            <Link href="/properties" className="print:hidden">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to History
+              </Button>
+            </Link>
+            <div className="flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold break-words leading-tight">{property.address}</h1>
+              <p className="text-gray-600 text-sm md:text-base mt-1">
+                {property.propertyType} • {property.bedrooms ? `${property.bedrooms} bed` : ''}{property.bedrooms && property.bathrooms ? ' / ' : ''}{property.bathrooms ? `${property.bathrooms} bath` : ''} • Analyzed {new Date(property.createdAt).toLocaleDateString()}
+                {property.grossRent && property.squareFootage ? (
+                  <>
+                    <span className="mx-2">•</span>
+                    <span className="text-xs text-blue-700">Rent/Sq Ft: </span>
+                    <span className="text-xs font-semibold">${(property.grossRent / property.squareFootage).toFixed(2)}</span>
+                  </>
+                ) : null}
+                {walkRating && (
+                  <>
+                    <span className="mx-2">•</span>
+                    <span className="text-xs text-amber-700">Walk-Through Rating: </span>
+                    {walkRating.avg === null ? (
+                      <span className="text-xs font-semibold text-gray-500">No ratings</span>
+                    ) : (
+                      <span className="text-xs font-semibold">
+                        {walkRating.avg.toFixed(1)}⭐ ({walkRating.count})
+                      </span>
+                    )}
+                  </>
+                )}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-col items-center">
-          <PieChartWithNeedle score={property.recommendationScore ?? 0} width={160} height={160} />
-          <span className="mt-1 text-xs text-gray-600">Score</span>
-        </div>
-        <div className="flex flex-col gap-2 print:hidden">
-          <Button variant="outline" onClick={() => window.print()}>
-            Print to PDF
-          </Button>
-          <Link href="/properties">
-            <Button variant="outline">
-              <History className="h-4 w-4 mr-2" />
-              View All Properties
-            </Button>
-          </Link>
+          
+          {/* Bottom row: Chart and action buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t pt-4">
+            <div className="flex flex-col items-center">
+              <PieChartWithNeedle 
+                score={property.recommendationScore ?? 0} 
+                width={120} 
+                height={120} 
+              />
+              <span className="mt-1 text-xs text-gray-600">Score</span>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 print:hidden w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => window.print()}>
+                Print to PDF
+              </Button>
+              <Link href="/properties" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <History className="h-4 w-4 mr-2" />
+                  View All Properties
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -15,6 +15,13 @@ const config = {
   modulePathIgnorePatterns: ['<rootDir>/.next/'],
   // Run tests sequentially to prevent database race conditions
   maxWorkers: 1,
+  // Enable experimental ESM support for next-auth and its dependencies
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
+  globals: {
+    'ts-jest': {
+      useESM: true
+    }
+  },
   testMatch: [
     '<rootDir>/src/tests/**/*.test.{js,jsx,ts,tsx}',
     '<rootDir>/src/**/*.test.{js,jsx,ts,tsx}'
@@ -37,9 +44,12 @@ const config = {
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    // Handle ESM modules for next-auth dependencies
+    '^jose': '<rootDir>/node_modules/jose/dist/node/cjs/index.js',
+    '^openid-client': '<rootDir>/node_modules/openid-client/lib/index.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(jose|openid-client|next-auth|@next-auth|node-fetch)/)',
+    'node_modules/(?!(jose|openid-client|next-auth|@next-auth|node-fetch|preact-render-to-string|oauth|@auth)/)',
   ],
 }
 

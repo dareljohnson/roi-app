@@ -6,6 +6,12 @@ export const RoomRentalSchema = z.object({
   weeklyRate: z.number().min(0, 'Weekly rate must be non-negative'),
 });
 
+// Rental strategy options
+export const RENTAL_STRATEGIES = [
+  'entire-house',
+  'individual-rooms'
+] as const;
+
 export const PropertySchema = z.object({
   address: z.string().min(5, 'Address must be at least 5 characters'),
   propertyType: z.enum(['Single Family', 'Multi-family', 'Duplex', 'Triplex', 'Fourplex', 'Townhouse', 'Condo', 'Commercial']),
@@ -18,7 +24,8 @@ export const PropertySchema = z.object({
   bathrooms: z.number().min(0).max(20).optional(),
   condition: z.enum(['Excellent', 'Good', 'Fair', 'Poor', 'Needs Major Repairs']).optional(),
   imageUrl: z.string().optional(),
-  rentableRooms: z.array(RoomRentalSchema).optional(), // New: array of rooms with weekly rates
+  rentalStrategy: z.enum(RENTAL_STRATEGIES).optional().default('entire-house'), // New: rental strategy selection
+  rentableRooms: z.array(RoomRentalSchema).optional(), // Array of rooms with weekly rates for room rental strategy
 })
 
 // Financing input validation schema
@@ -44,7 +51,7 @@ export const OperatingExpensesSchema = z.object({
 
 // Rental income validation schema
 export const RentalIncomeSchema = z.object({
-  grossRent: z.number().min(0, 'Gross rent cannot be negative'),
+  grossRent: z.number().min(0, 'Gross rent cannot be negative').optional(), // Optional for room rental strategy
   vacancyRate: z.number().min(0).max(1, 'Vacancy rate must be between 0-100%').default(0.05),
 })
 
@@ -56,6 +63,7 @@ export const PropertyAnalysisInputSchema = PropertySchema
 
 // TypeScript types derived from schemas
 export type RoomRental = z.infer<typeof RoomRentalSchema>;
+export type RentalStrategy = typeof RENTAL_STRATEGIES[number];
 export type PropertyInput = z.infer<typeof PropertySchema>
 export type FinancingInput = z.infer<typeof FinancingSchema>
 export type OperatingExpensesInput = z.infer<typeof OperatingExpensesSchema>

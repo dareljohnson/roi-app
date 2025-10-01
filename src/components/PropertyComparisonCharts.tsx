@@ -62,7 +62,7 @@ export default function PropertyComparisonCharts({ properties }: { properties: P
           </BarChart>
         </ResponsiveContainer>
         {/* PieChartWithNeedle row aligned under each property */}
-  <div className="flex flex-row gap-10 justify-center mt-8">
+  <div className="flex flex-col sm:flex-row gap-6 sm:gap-10 justify-center mt-8 overflow-x-auto">
     {properties.map((p) => (
       <div
         key={p.id}

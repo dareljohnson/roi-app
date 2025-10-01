@@ -173,7 +173,7 @@ export function WalkThroughNotes({ propertyId, propertyAddress }: WalkThroughNot
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <CardTitle>Walk-Through Notes</CardTitle>
             <CardDescription>
@@ -184,6 +184,7 @@ export function WalkThroughNotes({ propertyId, propertyAddress }: WalkThroughNot
             onClick={() => setShowForm(true)} 
             size="sm"
             disabled={showForm}
+            className="self-start sm:self-auto"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Note

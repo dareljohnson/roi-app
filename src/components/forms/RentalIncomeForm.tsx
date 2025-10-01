@@ -79,9 +79,19 @@ export function RentalIncomeForm({ data, onUpdate, onAnalyze, onPrev, isAnalyzin
 
   // Helper: is form valid
   const isValid = () => {
-    const grossRent = Number(formData.grossRent);
     const vacancyRate = Number(formData.vacancyRate);
-    return grossRent > 0 && vacancyRate >= 0 && vacancyRate <= 100;
+    const vacancyValid = vacancyRate >= 0 && vacancyRate <= 100;
+    
+    // For individual rooms strategy, grossRent is calculated from room rates
+    if (data.rentalStrategy === 'individual-rooms') {
+      const hasValidRooms = data.rentableRooms && data.rentableRooms.length > 0 && 
+                           data.rentableRooms.every(room => room.weeklyRate > 0);
+      return hasValidRooms && vacancyValid;
+    }
+    
+    // For entire house strategy, need explicit grossRent
+    const grossRent = Number(formData.grossRent);
+    return grossRent > 0 && vacancyValid;
   };
 
   // User-friendly error for vacancy rate
@@ -101,9 +111,15 @@ export function RentalIncomeForm({ data, onUpdate, onAnalyze, onPrev, isAnalyzin
     setFormData(newData);
     // Convert to numbers and update parent
     const processedData: Partial<PropertyAnalysisInput> = {};
-    if (newData.grossRent && newData.grossRent !== '') {
-      processedData.grossRent = Number(newData.grossRent);
+    
+    // Only update grossRent for entire-house strategy
+    // For individual-rooms, grossRent is calculated from room rates in PropertyDetailsForm
+    if ((!data.rentalStrategy || data.rentalStrategy === 'entire-house') && newData.grossRent && newData.grossRent !== '') {
+      // Remove formatting before converting to number to handle values like "2,500.00"
+      const cleanValue = unformatCurrency(newData.grossRent.toString());
+      processedData.grossRent = Number(cleanValue);
     }
+    
     if (newData.vacancyRate && newData.vacancyRate !== '') {
       // Convert percentage back to decimal
       processedData.vacancyRate = Number(newData.vacancyRate) / 100;
@@ -115,9 +131,41 @@ export function RentalIncomeForm({ data, onUpdate, onAnalyze, onPrev, isAnalyzin
 
   return (
     <div className="space-y-6">
-      {/* Gross Rent and Market Estimates */}
-      <div>
-        <Label htmlFor="grossRent">Monthly Gross Rent *</Label>
+      {/* Rental Strategy Display */}
+      <div className="bg-blue-50 p-4 rounded-lg">
+        <h4 className="font-semibold text-blue-900 mb-2">Selected Rental Strategy</h4>
+
+        <div className="text-sm text-blue-800">
+          {data.rentalStrategy === 'individual-rooms' ? (
+            <>
+              <p><strong>Individual Rooms:</strong> You're renting out individual rooms to multiple tenants</p>
+              {data.rentableRooms && data.rentableRooms.length > 0 && (
+                <div className="mt-2">
+                  <p className="font-medium">Room Configuration:</p>
+                  <ul className="ml-4 list-disc">
+                    {data.rentableRooms.map((room, idx) => (
+                      <li key={idx}>
+                        Room {room.roomNumber}: ${room.weeklyRate}/week (${(room.weeklyRate * 4).toLocaleString()}/month)
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 font-semibold">
+                    Total Monthly Income from Rooms: ${data.grossRent?.toLocaleString() || '0'}
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            <p><strong>Entire House/Unit:</strong> You're renting the entire property to one tenant or family</p>
+          )}
+        </div>
+      </div>
+
+      {/* Gross Rent and Market Estimates - Only show for entire-house strategy */}
+      {(!data.rentalStrategy || data.rentalStrategy === 'entire-house') && (
+        <>
+          <div>
+            <Label htmlFor="grossRent">Monthly Gross Rent *</Label>
         <Input
           id="grossRent"
           type="text"
@@ -156,6 +204,8 @@ export function RentalIncomeForm({ data, onUpdate, onAnalyze, onPrev, isAnalyzin
           <span className="font-semibold">{rentEstimates.high.toLocaleString()}</span>
         </div>
       </div>
+        </>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Vacancy Rate */}
         <div>

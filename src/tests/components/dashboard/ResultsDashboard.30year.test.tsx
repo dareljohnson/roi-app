@@ -73,16 +73,16 @@ describe('ResultsDashboard 30-Year Projections', () => {
   // Default: 5-year
   expect(screen.getByTestId('toggle-5yr')).toBeInTheDocument();
   expect(screen.getByTestId('toggle-30yr')).toBeInTheDocument();
-  // Should show 5 year rows by default
+  // Should show 5 year rows by default (both mobile and desktop layouts are present)
   let yearRows = screen.getAllByText(/^Year \d+$/);
-  expect(yearRows.length).toBe(5);
+  expect(yearRows.length).toBe(10); // 5 in mobile cards + 5 in desktop table = 10 total
   // Should not show Year 30 row
   expect(yearRows.some(el => el.textContent === 'Year 30')).toBe(false);
 
   // Toggle to 30-year
   fireEvent.click(screen.getByTestId('toggle-30yr'));
   yearRows = screen.getAllByText(/^Year \d+$/);
-  expect(yearRows.length).toBe(30);
+  expect(yearRows.length).toBe(60); // 30 in mobile cards + 30 in desktop table = 60 total
   expect(yearRows.some(el => el.textContent === 'Year 30')).toBe(true);
   });
 });

@@ -34,6 +34,11 @@ primary_region = 'ord'
   DEPLOY_RUN_MIGRATIONS=true  # (default: true)
   DEPLOY_RUN_SEED=false       # (default: true)
 
+  SEED_ADMIN_EMAIL=admin@example.com
+  SEED_ADMIN_PASSWORD=StrongPass123!
+  SEED_ADMIN2_EMAIL=second.admin@example.com
+  SEED_ADMIN2_PASSWORD=AnotherStrongPass!    # optional
+
 [[mounts]]
   source = 'database_vol'
   destination = '/data'

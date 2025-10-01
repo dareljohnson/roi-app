@@ -34,7 +34,16 @@ export default function PieChartWithNeedle({ score, width = 120, height = 120 }:
   const needleY = centerY - needleLength * Math.sin(Math.PI - rad);
 
   return (
-    <div style={{ position: "relative", width, height }}>
+    <div 
+      style={{ 
+        position: "relative", 
+        width: width, 
+        height: height + 20, // Add space for score label
+        maxWidth: '100%',
+        margin: '0 auto'
+      }} 
+      className="flex-shrink-0"
+    >
       <PieChart width={width} height={height} style={{ position: "absolute", left: 0, top: 0 }}>
         <Pie
           data={data}
@@ -72,10 +81,10 @@ export default function PieChartWithNeedle({ score, width = 120, height = 120 }:
           position: "absolute",
           left: 0,
           right: 0,
-          bottom: 8,
+          bottom: 0,
           textAlign: "center",
           fontWeight: 600,
-          fontSize: 18,
+          fontSize: 16,
           color: getScoreColor(score),
         }}
       >
