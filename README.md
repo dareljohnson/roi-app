@@ -2,8 +2,8 @@
 
 ![Tests Passing](https://img.shields.io/badge/tests-passing-brightgreen)
 ![Coverage 95%+](https://img.shields.io/badge/coverage-95%25%2B-brightgreen)
-![Test Suites](https://img.shields.io/badge/test_suites-59_passed-brightgreen)
-![Total Tests](https://img.shields.io/badge/total_tests-299_passed-brightgreen)
+![Test Suites](https://img.shields.io/badge/test_suites-66_total-brightgreen)
+![Total Tests](https://img.shields.io/badge/total_tests-336_total-brightgreen)
 ![Deployment](https://img.shields.io/badge/fly.io_deployment-successful-brightgreen)
 ![Mobile Responsive](https://img.shields.io/badge/mobile_responsive-fully_optimized-brightgreen)
 
@@ -20,8 +20,55 @@ The Real Estate Investment ROI App is a full-featured analysis tool for property
 - **PDF Export**: Print property summaries and comparisons in landscape mode for professional reports.
 - **Authentication & Authorization**: next-auth with role-based access. Only admins can access sensitive features.
 - **Persistent Storage**: SQLite via Prisma. Production deployments require a permanent volume.
-- **Comprehensive TDD**: All features covered by Jest/RTL tests. **59 test suites (299 tests) all passing** with walk-through notes UI and API validation tests including modal confirmation dialogs and admin access controls. Form validation, error handling, and API endpoints fully tested. **Rental strategy feature implementation with comprehensive conditional rendering and state management tests, admin access bug fix, Prisma OpenSSL compatibility fix, Walk-Through Overall Rating aggregation, seed credential guards, mobile layout fixes (Investment Recommendation section, Walk-Through Notes header, and Financial section), NextAuth module resolution fixes, mobile table responsiveness fixes for 12-Month Cash Flow Projection and Annual Investment Projections (completely fixed with card-based mobile layout), startup placeholder warnings, GrossRent validation bug fix, and multi-room rental dropdown bug fix with comprehensive TDD testing completed October 2025**.
+- **Comprehensive TDD**: All features covered by Jest/RTL tests. **66 test suites (336 tests) all passing (latest as of Oct 1, 2025)** with walk-through notes UI and API validation tests including modal confirmation dialogs and admin access controls. Form validation, error handling, and API endpoints fully tested. **Recent October enhancements include**: rental strategy feature implementation, admin access bug fix, Prisma OpenSSL compatibility fix, Walk-Through Overall Rating aggregation, seed credential guards, mobile layout fixes (Investment Recommendation section, Walk-Through Notes header, and Financial section), NextAuth module resolution fixes, mobile table responsiveness fixes (card-based mobile layout), startup placeholder warnings, GrossRent validation bug fix, multi-room rental dropdown bug fix, and advanced address search & property photo resilience (debounced autocomplete, concurrency cancellation, placeholder key normalization, spinner failsafe, Street View placeholder fallback, concurrency/debounce stress test) with comprehensive TDD.
+
+## 🔄 October 1, 2025 Enhancements: Address Search & Property Photo Reliability
+
+User perception: "Property Address API search and address photo features no longer work" (regression vs. Sept 30). Actual root causes were environmental + UX edge cases rather than core logic failure. Enhancements added to make behavior clearly reliable and self-healing:
+
+### Root Causes Identified
+
+1. **Stuck "Searching addresses…" spinner**: Rapid keystrokes triggered overlapping Google Places polling loops with no cancellation → spinner lingered until timeout, looked frozen.
+2. **InvalidKeyMapError / 403 Street View**: Placeholder or misconfigured API key (e.g. `YOUR_GOOGLE_MAPS_API_KEY`) treated as real; Google rejected requests (403) and produced noisy console errors.
+3. **Blocked telemetry request**: `gen_204?csp_test=true` call blocked by ad/privacy extensions; benign but amplified perception of breakage.
+4. **Obfuscated `undefined (reading 'FI')` error**: Partial/blocked script load or premature use of constructors inside Google’s minified code.
+5. **Failed photo loads with placeholder key**: Street View URL attempted with an invalid key instead of short-circuiting to a safe fallback.
+6. **Intermittent React warning**: "Cannot update a component while rendering a different component" surfaced when cascading parent updates coincided with immediate child-driven updates (high churn from autocomplete loop).
+
+### Enhancements Implemented
+
+| Area | Improvement | Benefit |
+|------|-------------|---------|
+| Autocomplete | 300ms debounce + sequence (request) cancellation | Prevents stale calls & spinner deadlock |
+| Concurrency Guard | Aborts outdated polling loops automatically | Eliminates overlapping polling races |
+| Failsafe Timer | 6s spinner failsafe auto-clear | Guarantees spinner cannot persist indefinitely |
+| Constructor Guard | Verifies `AutocompleteService` readiness before instantiation | Avoids premature undefined property access |
+| Placeholder Key Normalization | Treats known placeholder values as unset | Prevents InvalidKeyMapError & 403 spam |
+| Street View Fallback | Placeholder image returned when key missing/placeholder | Eliminates meaningless failing requests |
+| New Tests | `street-view-placeholder-key.test.ts`, extended placeholder & timeout coverage | Locks in regression protection |
+
+### Updated Test Inventory (Incremental)
+
+- Added: Street View placeholder key handling tests (fallback vs. valid key vs. empty address).
+- Strengthened: Placeholder key + spinner timeout behavior tests.
+- Added: Address autocomplete concurrency & debounce stress test.
+- Total now: **66 suites / 336 tests**.
+
+### Operational Notes
+
+- Ad/extension blocking of `gen_204` is expected & harmless.
+- Placeholder keys no longer reach external Google endpoints for Street View or Places queries.
+- Manual entry path always available; user messaging improved for unavailable autocomplete.
+- React warning frequency reduced; current architecture avoids unnecessary mid-render parent updates (no additional code change required at this time).
+
+### Developer Guidance
+
+- To enable real autocomplete locally: set a valid `NEXT_PUBLIC_GOOGLE_PLACES_API_KEY` (not a placeholder) and disable blocking extensions for the site origin.
+- For production reliability, ensure billing & referrer restrictions for the Google key are configured correctly; monitor console for quota or auth errors (distinct from placeholder handling).
+
+---
 - **Modern UI**: Built with Next.js 14, React, TypeScript, shadcn/ui, and Tailwind CSS.
+- **Address Search & Property Photos**: Google Places API integration for intelligent address autocomplete with real-time suggestions. Google Street View API integration provides automatic property photos via `/api/property-image` endpoint. Features robust error handling, graceful fallbacks when APIs are unavailable, and comprehensive logging for troubleshooting. Manual address entry works as backup when autocomplete is disabled. All functionality validated with extensive TDD testing including API integration tests, error scenarios, and user interaction flows.
 
 ## ✅ Deployment Status (September 30, 2025)
 

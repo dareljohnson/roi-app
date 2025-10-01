@@ -7,6 +7,7 @@ describe('PropertyDetailsForm', () => {
   it('fetches and displays property image on address blur', async () => {
     // Mock fetch
     global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
       json: async () => ({ imageUrl: 'https://example.com/property.jpg' })
     }) as any;
 
@@ -31,6 +32,7 @@ describe('PropertyDetailsForm', () => {
 
   it('calls onUpdate with imageUrl after image fetch', async () => {
     global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
       json: async () => ({ imageUrl: 'https://example.com/property.jpg' })
     }) as any;
     const onUpdate = jest.fn();

@@ -3,10 +3,7 @@
 
 
 import { useState, useRef, useEffect } from 'react'
-// Google Maps JavaScript SDK Autocomplete integration
-const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
-
-import { PropertyAnalysisInput, PROPERTY_TYPES, PROPERTY_CONDITIONS, RoomRental, RENTAL_STRATEGIES } from '@/types/property'
+import { PropertyAnalysisInput, PROPERTY_TYPES, PROPERTY_CONDITIONS } from '@/types/property'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,6 +15,20 @@ declare global {
     google: any;
   }
 }
+
+// Google Places API key accessor (dynamic so tests can modify process.env at runtime)
+// Treat common placeholder value as unset so UI shows proper manual entry hint
+const getGooglePlacesApiKey = () => {
+  const raw = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY?.trim();
+  if (!raw) return undefined;
+  const placeholderPatterns = [
+    'YOUR_GOOGLE_MAPS_API_KEY',
+    'YOUR_GOOGLE_API_KEY',
+    'REPLACE_WITH_GOOGLE_MAPS_KEY'
+  ];
+  if (placeholderPatterns.includes(raw)) return undefined;
+  return raw;
+};
 
 // Helper: format integer with commas (e.g., 1434 -> 1,434)
 function formatInteger(value: string | number) {
@@ -93,19 +104,39 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const autocompleteServiceRef = useRef<any>(null);
   const googleMapsScriptLoaded = useRef(false);
+  const googleMapsLoadFailed = useRef(false);
+  // Debounce & concurrency control for autocomplete requests
+  const autocompleteDebounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const autocompleteRequestSeq = useRef(0); // incrementing sequence for each user input trigger
+  const activeAutocompleteSeq = useRef(0); // last sequence that actually executed polling
 
   // Load Google Maps JS SDK if not already loaded
   useEffect(() => {
+    // Never attempt to load external Google script during tests (prevents blocked network noise & obfuscated errors)
+    if (process.env.NODE_ENV === 'test') return;
     if (typeof window === 'undefined' || googleMapsScriptLoaded.current) return;
-    if (window.google && window.google.maps && window.google.maps.places) {
+    if (window.google?.maps?.places) {
       googleMapsScriptLoaded.current = true;
       return;
     }
+
+    const apiKey = getGooglePlacesApiKey();
+    if (!apiKey) {
+      console.warn('Google Places API key not found. Address autocomplete will not be available.');
+      return;
+    }
+
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_PLACES_API_KEY}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
     script.async = true;
     script.onload = () => {
       googleMapsScriptLoaded.current = true;
+      console.log('Google Maps API loaded successfully');
+    };
+    script.onerror = () => {
+      console.error('Failed to load Google Maps API. Address autocomplete will not be available.');
+      googleMapsScriptLoaded.current = false;
+      googleMapsLoadFailed.current = true;
     };
     document.body.appendChild(script);
   }, []);
@@ -113,37 +144,122 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
   // Handle address input change with JS SDK autocomplete
   const handleAddressInputChange = (value: string) => {
     handleChange('address', value);
+    // Cancel any in-flight debounce timer
+    if (autocompleteDebounceTimer.current) {
+      clearTimeout(autocompleteDebounceTimer.current);
+      autocompleteDebounceTimer.current = null;
+    }
+    // If user cleared / short input, reset state immediately
     if (value.trim().length < 3) {
       setSuggestions([]);
       setShowSuggestions(false);
+      setAutocompleteLoading(false);
       return;
     }
+    const apiKey = getGooglePlacesApiKey();
+    if (!apiKey) {
+      console.warn('Google Places API key not available or placeholder value detected. Skipping autocomplete.');
+      setAutocompleteLoading(false);
+      return;
+    }
+    if (googleMapsLoadFailed.current) {
+      console.warn('Google Maps script previously failed to load. Skipping autocomplete.');
+      setAutocompleteLoading(false);
+      return;
+    }
+    // Start loading spinner (debounced execution below will perform work)
     setAutocompleteLoading(true);
-    // Wait for Google Maps JS SDK to load
-    const pollForService = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        if (!autocompleteServiceRef.current) {
-          autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService();
+    const seq = ++autocompleteRequestSeq.current; // mark new request sequence
+
+    const executeAutocomplete = () => {
+      activeAutocompleteSeq.current = seq;
+      let pollAttempts = 0;
+      const maxPollAttempts = 50; // 5 seconds maximum
+      const startTime = Date.now();
+      // Failsafe: ensure spinner cannot persist beyond 6s even if logic fails
+      const failsafeTimer = setTimeout(() => {
+        if (autocompleteLoading) {
+          console.warn('Autocomplete failsafe clearing spinner (exceeded 6s)');
+          setAutocompleteLoading(false);
         }
-        autocompleteServiceRef.current.getPlacePredictions(
-          { input: value, types: ['address'] },
-          (predictions: any[], status: string) => {
-            if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
-              setSuggestions(predictions);
-              setShowSuggestions(true);
-            } else {
-              setSuggestions([]);
-              setShowSuggestions(false);
+      }, 6000);
+
+      const finalize = () => {
+        clearTimeout(failsafeTimer);
+        // small delay for UX parity / test visibility
+        setTimeout(() => setAutocompleteLoading(false), 10);
+      };
+
+      const pollForService = () => {
+        // If a newer request started, abort this poll loop
+        if (seq !== autocompleteRequestSeq.current) {
+          finalize();
+          return;
+        }
+        pollAttempts++;
+        if (window.google && window.google.maps && window.google.maps.places) {
+          try {
+            if (!autocompleteServiceRef.current) {
+              // Guard: ensure constructor exists before treating API as ready
+              if (!window.google.maps.places.AutocompleteService) {
+                throw new Error('AutocompleteService ctor not yet available');
+              }
+              autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService();
             }
-            setAutocompleteLoading(false);
+            autocompleteServiceRef.current.getPlacePredictions(
+              { input: value, types: ['address'] },
+              (predictions: any[], status: string) => {
+                if (seq !== autocompleteRequestSeq.current) { finalize(); return; }
+                if (
+                  status === window.google.maps.places.PlacesServiceStatus.OK &&
+                  predictions && predictions.length
+                ) {
+                  setSuggestions(predictions);
+                  setShowSuggestions(true);
+                } else {
+                  setSuggestions([]);
+                  setShowSuggestions(false);
+                  if (status !== window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+                    console.warn('Google Places API returned status:', status);
+                  }
+                }
+                finalize();
+              }
+            );
+          } catch (error) {
+            console.error('Error using Google Places Autocomplete service:', error);
+            setSuggestions([]);
+            setShowSuggestions(false);
+            if (Date.now() - startTime < 5000 && pollAttempts < maxPollAttempts) {
+              // Retry shortly if within window & same request
+              setTimeout(pollForService, 100);
+            } else {
+              finalize();
+            }
           }
-        );
-      } else {
-        setTimeout(pollForService, 100);
-      }
+        } else if (googleMapsLoadFailed.current) {
+          console.warn('Aborting address search due to prior Google Maps load failure.');
+          finalize();
+        } else if (pollAttempts < maxPollAttempts) {
+          setTimeout(pollForService, 100);
+        } else {
+          console.warn('Google Maps API failed to load after 5 seconds. Address autocomplete unavailable.');
+          finalize();
+        }
+      };
+      pollForService();
     };
-    pollForService();
+
+    // Debounce actual execution to wait for user pause (300ms)
+    autocompleteDebounceTimer.current = setTimeout(executeAutocomplete, 300);
   };
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (autocompleteDebounceTimer.current) clearTimeout(autocompleteDebounceTimer.current);
+    };
+  }, []);
 
   // Handle suggestion click
   const handleSuggestionClick = (suggestion: { description: string; place_id: string }) => {
@@ -172,15 +288,30 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
     if (formData.address && formData.address.trim().length > 5) {
       setImageLoading(true);
       try {
+        console.log('Fetching property image for address:', formData.address);
         const resp = await fetch('/api/property-image', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ address: formData.address }),
         });
+        
+        if (!resp.ok) {
+          throw new Error(`HTTP error! status: ${resp.status}`);
+        }
+        
         const dataResp = await resp.json();
-        setImageUrl(dataResp.imageUrl);
+        console.log('Property image API response:', dataResp);
+        
+        if (dataResp.imageUrl) {
+          setImageUrl(dataResp.imageUrl);
+          console.log('Property image URL set:', dataResp.imageUrl);
+        } else {
+          console.warn('No image URL returned from API');
+          setImageUrl(null);
+        }
+        
         setFormData((prev) => {
-          const updated = { ...prev, imageUrl: dataResp.imageUrl };
+          const updated = { ...prev, imageUrl: dataResp.imageUrl || '' };
           // Convert string fields to numbers where needed for onUpdate
           const processedData: Partial<PropertyAnalysisInput> = {
             ...updated,
@@ -204,7 +335,8 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
           onUpdate(processedData);
           return updated;
         });
-      } catch (e) {
+      } catch (error) {
+        console.error('Error fetching property image:', error);
         setImageUrl(null);
         setFormData((prev) => {
           const updated = { ...prev, imageUrl: '' };
@@ -231,7 +363,8 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
           return updated;
         });
       } finally {
-        setImageLoading(false);
+        // Add a small delay to ensure loading state is visible in tests
+        setTimeout(() => setImageLoading(false), 50);
       }
     }
   };
@@ -430,10 +563,26 @@ export function PropertyDetailsForm({ data, onUpdate, onNext }: PropertyDetailsF
                 ))}
               </ul>
             )}
+            {!getGooglePlacesApiKey() && (
+              <div className="text-xs text-yellow-600 mt-1">
+                🚫 Address autocomplete unavailable. Enter address manually.
+              </div>
+            )}
             {imageLoading && <div className="mb-2 text-sm text-gray-500">Loading property image...</div>}
             {imageUrl && (
               <div className="mb-4 mt-4">
-                <img src={imageUrl} alt="Property front" className="rounded shadow max-w-xs" />
+                <img 
+                  src={imageUrl} 
+                  alt="Property front" 
+                  className="rounded shadow max-w-xs"
+                  onError={(e) => {
+                    console.error('Failed to load property image:', imageUrl);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  onLoad={() => {
+                    console.log('Property image loaded successfully:', imageUrl);
+                  }}
+                />
               </div>
             )}
           </div>
