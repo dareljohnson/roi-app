@@ -180,7 +180,8 @@ describe('WalkThroughNoteForm Component', () => {
       expect(mockOnSubmit).toHaveBeenCalledWith({
         title: 'Great Property',
         content: 'Really impressed with the condition.',
-        rating: 4
+        rating: 4,
+        photos: []
       })
     })
   })
@@ -254,7 +255,8 @@ describe('WalkThroughNoteForm Component', () => {
       expect(mockOnSubmit).toHaveBeenCalledWith({
         title: 'Padded Title',
         content: 'Padded Content',
-        rating: 3
+        rating: 3,
+        photos: []
       })
     })
   })

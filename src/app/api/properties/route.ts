@@ -52,7 +52,41 @@ const PropertyAnalysisSchema = z.object({
   equipment: z.number().min(0, 'Equipment must be non-negative').optional(),
   rehabCosts: z.number().min(0, 'Rehab costs must be non-negative').optional(),
   imageUrl: z.string().url().optional(),
+  rentalStrategy: z.enum(['entire-house', 'individual-rooms']).optional().default('entire-house'),
 })
+
+async function buildPropertyData(validatedData: any, body: any, session: any) {
+  return ({
+    userId: (session.user as any).id,
+    address: validatedData.address,
+    propertyType: validatedData.propertyType,
+    purchasePrice: validatedData.purchasePrice,
+    currentValue: validatedData.currentValue || null,
+    squareFootage: validatedData.squareFootage || null,
+    lotSize: validatedData.lotSize || null,
+    yearBuilt: validatedData.yearBuilt || null,
+    bedrooms: validatedData.bedrooms || null,
+    bathrooms: validatedData.bathrooms || null,
+    condition: validatedData.condition || null,
+    downPayment: validatedData.downPayment,
+    interestRate: validatedData.interestRate,
+    loanTerm: validatedData.loanTerm,
+    closingCosts: validatedData.closingCosts || null,
+    pmiRate: validatedData.pmiRate || null,
+    grossRent: validatedData.grossRent,
+    vacancyRate: validatedData.vacancyRate,
+    rentalStrategy: validatedData.rentalStrategy || (body.propertyData && body.propertyData.rentalStrategy) || 'entire-house',
+    propertyTaxes: validatedData.propertyTaxes || null,
+    insurance: validatedData.insurance || null,
+    propertyMgmt: validatedData.propertyMgmt || null,
+    maintenance: validatedData.maintenance || null,
+    utilities: validatedData.utilities || null,
+    hoaFees: validatedData.hoaFees || null,
+    equipment: validatedData.equipment || null,
+    rehabCosts: validatedData.rehabCosts || null,
+    imageUrl: validatedData.imageUrl || body.propertyData.imageUrl || null,
+  }) as any
+}
 
 export async function POST(request: NextRequest) {
   const start = Date.now();
@@ -76,37 +110,32 @@ export async function POST(request: NextRequest) {
     console.log('Results data:', JSON.stringify(results, null, 2))
 
     // Save property to database
-    const property = await prisma.property.create({
-      data: {
-        userId: (session.user as any).id,
-        address: validatedData.address,
-        propertyType: validatedData.propertyType,
-        purchasePrice: validatedData.purchasePrice,
-        currentValue: validatedData.currentValue || null,
-        squareFootage: validatedData.squareFootage || null,
-        lotSize: validatedData.lotSize || null,
-        yearBuilt: validatedData.yearBuilt || null,
-        bedrooms: validatedData.bedrooms || null,
-        bathrooms: validatedData.bathrooms || null,
-        condition: validatedData.condition || null,
-        downPayment: validatedData.downPayment,
-        interestRate: validatedData.interestRate,
-        loanTerm: validatedData.loanTerm,
-        closingCosts: validatedData.closingCosts || null,
-        pmiRate: validatedData.pmiRate || null,
-        grossRent: validatedData.grossRent,
-        vacancyRate: validatedData.vacancyRate,
-        propertyTaxes: validatedData.propertyTaxes || null,
-        insurance: validatedData.insurance || null,
-        propertyMgmt: validatedData.propertyMgmt || null,
-        maintenance: validatedData.maintenance || null,
-        utilities: validatedData.utilities || null,
-        hoaFees: validatedData.hoaFees || null,
-        equipment: validatedData.equipment || null,
-        rehabCosts: validatedData.rehabCosts || null,
-        imageUrl: validatedData.imageUrl || body.propertyData.imageUrl || null,
-      },
-    })
+    const createPropertyWithRentalStrategy = async () => {
+      return prisma.property.create({ data: await buildPropertyData(validatedData, body, session) })
+    }
+
+    let property: any;
+    try {
+      property = await createPropertyWithRentalStrategy();
+    } catch (err: any) {
+      // Self-heal if the rentalStrategy column is missing in production (migration not yet applied)
+      if (err?.code === 'P2022' && err?.meta?.column === 'rentalStrategy') {
+        console.warn('[Self-Heal] rentalStrategy column missing. Attempting on-the-fly addition and retry...');
+        try {
+          // SQLite safe additive ALTER TABLE (no DROP/REWRITE) – if it races, ignore failure.
+          await prisma.$executeRawUnsafe("ALTER TABLE properties ADD COLUMN rentalStrategy TEXT DEFAULT 'entire-house'");
+          // Backfill nulls if any existing rows (older rows will get default automatically for new queries)
+          await prisma.$executeRawUnsafe("UPDATE properties SET rentalStrategy='entire-house' WHERE rentalStrategy IS NULL OR rentalStrategy=''");
+          property = await createPropertyWithRentalStrategy();
+          console.log('[Self-Heal] rentalStrategy column added successfully.');
+        } catch (healErr) {
+          console.error('[Self-Heal] Failed to add rentalStrategy column:', healErr);
+          throw err; // rethrow original error path
+        }
+      } else {
+        throw err;
+      }
+    }
 
     // Save analysis results
     const analysis = await prisma.analysis.create({
@@ -124,9 +153,9 @@ export async function POST(request: NextRequest) {
         effectiveGrossIncome: results.effectiveGrossIncome || 0,
         recommendation: results.recommendation || 'PASS',
         recommendationScore: results.recommendationScore || 0,
-  monthlyProjections: JSON.stringify(results.monthlyProjections || []),
-  annualProjections: JSON.stringify(results.annualProjections || []),
-  recommendationReasons: JSON.stringify(results.recommendationReasons || []),
+        monthlyProjections: JSON.stringify(results.monthlyProjections || []),
+        annualProjections: JSON.stringify(results.annualProjections || []),
+        recommendationReasons: JSON.stringify(results.recommendationReasons || []),
       },
     })
 
@@ -215,6 +244,7 @@ export async function GET(request: NextRequest) {
         address: property.address,
         propertyType: property.propertyType,
         purchasePrice: property.purchasePrice,
+  rentalStrategy: (property as any).rentalStrategy || 'entire-house',
         bedrooms: property.bedrooms,
         bathrooms: property.bathrooms,
         createdAt: property.createdAt,

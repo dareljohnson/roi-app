@@ -49,8 +49,6 @@ async function getPropertiesByIds(ids: string[]): Promise<PropertyAnalysis[]> {
       "Content-Type": "application/json",
       ...(cookieHeader ? { cookie: cookieHeader } : {}),
     },
-    // @ts-ignore
-    next: { revalidate: 0 },
   });
   if (!res.ok) throw new Error("Failed to fetch properties");
   const data = await res.json();

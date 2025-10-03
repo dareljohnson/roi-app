@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Edit, Trash2, Star } from 'lucide-react'
-import { WalkThroughNote } from '@/types/walkthrough'
+import { Plus, Edit, Trash2, Star, X } from 'lucide-react'
+import { WalkThroughNote, WalkThroughPhoto } from '@/types/walkthrough'
 import { WalkThroughNoteForm } from '@/components/walkthrough/WalkThroughNoteForm'
 
 interface WalkThroughNotesProps {
@@ -20,6 +20,8 @@ export function WalkThroughNotes({ propertyId, propertyAddress }: WalkThroughNot
   const [error, setError] = useState<string | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [noteToDelete, setNoteToDelete] = useState<WalkThroughNote | null>(null)
+  const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(false)
+  const [photoToDelete, setPhotoToDelete] = useState<{ photoId: string, noteId: string } | null>(null)
 
   useEffect(() => {
     fetchNotes()
@@ -49,7 +51,7 @@ export function WalkThroughNotes({ propertyId, propertyAddress }: WalkThroughNot
     }
   }
 
-  const handleNoteSubmit = async (noteData: { title: string; content: string; rating: number }) => {
+  const handleNoteSubmit = async (noteData: { title: string; content: string; rating: number; photos: WalkThroughPhoto[] }) => {
     try {
       const url = editingNote 
         ? `/api/walkthrough-notes/${editingNote.id}`
@@ -57,7 +59,7 @@ export function WalkThroughNotes({ propertyId, propertyAddress }: WalkThroughNot
       
       const method = editingNote ? 'PUT' : 'POST'
       const body = editingNote 
-        ? noteData
+        ? noteData // This now includes photos!
         : { ...noteData, propertyId }
 
       const response = await fetch(url, {
@@ -120,6 +122,43 @@ export function WalkThroughNotes({ propertyId, propertyAddress }: WalkThroughNot
   const handleCancelDelete = () => {
     setShowDeleteModal(false)
     setNoteToDelete(null)
+  }
+
+  const handleDeletePhoto = (photoId: string, noteId: string) => {
+    setPhotoToDelete({ photoId, noteId })
+    setShowDeletePhotoModal(true)
+  }
+
+  const handleConfirmDeletePhoto = async () => {
+    if (!photoToDelete) return
+
+    try {
+      const response = await fetch(`/api/walkthrough-photos/${photoToDelete.photoId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete photo')
+      }
+
+      const data = await response.json()
+      if (data.success) {
+        await fetchNotes() // Refresh the notes list to update photo counts
+        setShowDeletePhotoModal(false)
+        setPhotoToDelete(null)
+      } else {
+        setError(data.error || 'Failed to delete photo')
+      }
+    } catch (err) {
+      console.error('Error deleting photo:', err)
+      setError(err instanceof Error ? err.message : 'Error deleting photo')
+    }
+  }
+
+  const handleCancelDeletePhoto = () => {
+    setShowDeletePhotoModal(false)
+    setPhotoToDelete(null)
   }
 
   const handleEditNote = (note: WalkThroughNote) => {
@@ -204,7 +243,8 @@ export function WalkThroughNotes({ propertyId, propertyAddress }: WalkThroughNot
               initialData={editingNote ? {
                 title: editingNote.title,
                 content: editingNote.content,
-                rating: editingNote.rating ?? 0
+                rating: editingNote.rating ?? 0,
+                photos: editingNote.photos || []
               } : undefined}
               onSubmit={handleNoteSubmit}
               onCancel={handleCancelForm}
@@ -265,6 +305,63 @@ export function WalkThroughNotes({ propertyId, propertyAddress }: WalkThroughNot
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
                   {note.content}
                 </p>
+
+                {/* Photo Gallery */}
+                {note.photos && note.photos.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-sm font-medium text-gray-700">
+                        Attached Photos
+                      </h5>
+                      <span className="text-xs text-gray-500">
+                        {note.photos.length} {note.photos.length === 1 ? 'photo' : 'photos'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {note.photos
+                        .sort((a, b) => a.order - b.order)
+                        .map((photo) => (
+                          <div key={photo.id} className="relative group">
+                            {/* Delete button */}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 h-6 w-6"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeletePhoto(photo.id, note.id)
+                              }}
+                              aria-label="Delete photo"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                            
+                            <img
+                              src={photo.filepath}
+                              alt={photo.description || photo.filename}
+                              className="w-full h-24 object-cover rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.src = '/placeholder-image.png'
+                              }}
+                              onClick={() => {
+                                // Open full-size image in new tab/window
+                                window.open(photo.filepath, '_blank')
+                              }}
+                            />
+                            {photo.description && (
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-75 transition-all duration-200 rounded-lg flex items-center justify-center">
+                                <p className="text-white text-xs text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 px-2">
+                                  {photo.description}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-3 text-xs text-gray-500">
                   {note.updatedAt !== note.createdAt ? 'Updated' : 'Created'} on{' '}
                   {new Date(note.updatedAt).toLocaleDateString()} at{' '}
@@ -298,6 +395,34 @@ export function WalkThroughNotes({ propertyId, propertyAddress }: WalkThroughNot
                 onClick={handleConfirmDelete}
               >
                 Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Photo Confirmation Modal */}
+      {showDeletePhotoModal && photoToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              Delete Photo
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete this photo? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={handleCancelDeletePhoto}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDeletePhoto}
+              >
+                Delete Photo
               </Button>
             </div>
           </div>

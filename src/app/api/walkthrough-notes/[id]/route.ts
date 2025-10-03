@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { WalkThroughNoteSchema, WalkThroughNoteUpdateSchema } from '@/types/walkthrough'
+import fs from 'fs/promises'
+import path from 'path'
 
 // GET /api/walkthrough-notes/[id] - Get a specific walk-through note
 export async function GET(
@@ -39,8 +41,13 @@ export async function GET(
           select: {
             address: true
           }
+        },
+        photos: {
+          orderBy: {
+            order: 'asc'
+          }
         }
-      }
+      } as any
     })
 
     if (!note) {
@@ -104,14 +111,69 @@ export async function PUT(
       }, { status: 404 })
     }
 
+    // Handle photo updates if provided
+    const updateData: any = {
+      title: validatedData.title,
+      content: validatedData.content,
+      rating: validatedData.rating
+    }
+
+    // If photos are provided, intelligently update them
+    if (validatedData.photos) {
+      // Get existing photos
+      const existingPhotos = await (prisma as any).walkThroughPhoto.findMany({
+        where: { noteId: params.id }
+      }) || []
+
+      // Separate existing photos from new photos
+      const existingPhotoIds = existingPhotos.map((p: any) => p.id)
+      const updatedPhotoIds = validatedData.photos
+        .filter(p => p.id)
+        .map(p => p.id)
+      const newPhotos = validatedData.photos.filter(p => !p.id)
+
+      // Delete photos that are no longer in the updated list
+      const photosToDelete = existingPhotoIds.filter((id: string) => !updatedPhotoIds.includes(id))
+      if (photosToDelete.length > 0) {
+        await (prisma as any).walkThroughPhoto.deleteMany({
+          where: {
+            id: { in: photosToDelete },
+            noteId: params.id
+          }
+        })
+      }
+
+      // Update existing photos (description, order changes)
+      const existingPhotosToUpdate = validatedData.photos.filter(p => p.id && existingPhotoIds.includes(p.id))
+      for (const photo of existingPhotosToUpdate) {
+        await (prisma as any).walkThroughPhoto.update({
+          where: { id: photo.id },
+          data: {
+            description: photo.description || '',
+            order: photo.order ?? 0
+          }
+        })
+      }
+
+      // Create new photos
+      if (newPhotos.length > 0) {
+        updateData.photos = {
+          create: newPhotos.map((photo, index) => ({
+            filename: photo.filename,
+            filepath: photo.filepath,
+            filesize: photo.filesize,
+            mimetype: photo.mimetype,
+            description: photo.description || '',
+            order: photo.order ?? (existingPhotos.length + index)
+          }))
+        }
+      }
+    }
+
     // Update note
     const updatedNote = await prisma.walkThroughNote.update({
       where: { id: params.id },
-      data: {
-        title: validatedData.title,
-        content: validatedData.content,
-        rating: validatedData.rating
-      },
+      data: updateData,
       include: {
         user: {
           select: {
@@ -123,8 +185,13 @@ export async function PUT(
           select: {
             address: true
           }
+        },
+        photos: {
+          orderBy: {
+            order: 'asc'
+          }
         }
-      }
+      } as any
     })
 
     return NextResponse.json({
@@ -184,7 +251,23 @@ export async function DELETE(
       }, { status: 404 })
     }
 
-    // Delete note
+    // Delete associated photos first (cleanup files)
+    const photosToDelete = await (prisma as any).walkThroughPhoto.findMany({
+      where: { noteId: params.id },
+      select: { filepath: true }
+    })
+
+    // Delete photo files from filesystem
+    for (const photo of photosToDelete) {
+      try {
+        const fullPath = path.join(process.cwd(), 'public', photo.filepath)
+        await fs.unlink(fullPath)
+      } catch (error) {
+        console.warn('Failed to delete photo file:', photo.filepath, error)
+      }
+    }
+
+    // Delete note (cascade will delete photos from DB)
     await prisma.walkThroughNote.delete({
       where: { id: params.id }
     })

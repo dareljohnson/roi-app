@@ -51,6 +51,8 @@ model Property {
   // Rental Income
   grossRent       Float
   vacancyRate     Float    @default(0.05) // 5% default
+  // Rental Strategy
+  rentalStrategy  String   @default("entire-house") // 'entire-house' or 'individual-rooms'
   
   // Operating Expenses
   propertyTaxes   Float?   @default(0)
@@ -204,6 +206,9 @@ model WalkThroughNote {
   content     String   // Detailed walk-through notes
   rating      Int?     @default(0) // 1-5 star rating
   
+  // Photo attachments
+  photos      WalkThroughPhoto[]
+  
   // Property association
   propertyId  String
   property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
@@ -213,4 +218,26 @@ model WalkThroughNote {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("walk_through_notes")
+}
+
+// Photo attachments for walk-through notes
+model WalkThroughPhoto {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  
+  // File information
+  filename    String   // Original filename
+  filepath    String   // Storage path/URL
+  filesize    Int      // File size in bytes
+  mimetype    String   // Image MIME type
+  
+  // Optional metadata
+  description String?  // User-provided description
+  order       Int      @default(0) // Display order
+  
+  // Association
+  noteId      String
+  note        WalkThroughNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  
+  @@map("walk_through_photos")
 }

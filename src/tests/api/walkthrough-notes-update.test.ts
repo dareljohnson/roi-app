@@ -105,6 +105,11 @@ describe('/api/walkthrough-notes/[id] PUT', () => {
           select: {
             address: true
           }
+        },
+        photos: {
+          orderBy: {
+            order: 'asc'
+          }
         }
       }
     })

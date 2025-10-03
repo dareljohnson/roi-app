@@ -6,14 +6,22 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Star } from 'lucide-react'
+import { PhotoUpload } from './PhotoUpload'
+import { WalkThroughPhoto } from '@/types/walkthrough'
 
 interface WalkThroughNoteFormProps {
   initialData?: {
     title: string
     content: string
     rating: number
+    photos?: WalkThroughPhoto[]
   }
-  onSubmit: (data: { title: string; content: string; rating: number }) => Promise<void>
+  onSubmit: (data: { 
+    title: string; 
+    content: string; 
+    rating: number; 
+    photos: WalkThroughPhoto[] 
+  }) => Promise<void>
   onCancel: () => void
   isEditing?: boolean
 }
@@ -27,6 +35,7 @@ export function WalkThroughNoteForm({
   const [title, setTitle] = useState(initialData?.title || '')
   const [content, setContent] = useState(initialData?.content || '')
   const [rating, setRating] = useState(initialData?.rating || 3)
+  const [photos, setPhotos] = useState<WalkThroughPhoto[]>(initialData?.photos || [])
   const [hoveredRating, setHoveredRating] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -36,6 +45,7 @@ export function WalkThroughNoteForm({
       setTitle(initialData.title)
       setContent(initialData.content)
       setRating(initialData.rating)
+      setPhotos(initialData.photos || [])
     }
   }, [initialData])
 
@@ -78,7 +88,8 @@ export function WalkThroughNoteForm({
       await onSubmit({
         title: title.trim(),
         content: content.trim(),
-        rating
+        rating,
+        photos
       })
     } catch (error) {
       console.error('Error submitting form:', error)
@@ -177,6 +188,13 @@ export function WalkThroughNoteForm({
             Rate your overall impression of this property (1 = Poor, 5 = Excellent)
           </p>
         </div>
+
+        <PhotoUpload
+          photos={photos}
+          onPhotosChange={setPhotos}
+          maxPhotos={10}
+          disabled={isSubmitting}
+        />
 
         <div className="flex items-center gap-3 pt-2">
           <Button 

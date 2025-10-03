@@ -48,7 +48,9 @@ const mockPropertyData: PropertyAnalysisInput = {
   utilities: 0,
   hoaFees: 0,
   equipment: 0,
-  rehabCosts: 0
+  rehabCosts: 0,
+  imageUrl: '/uploads/test-property.jpg', // <-- Ensure photo exists for test
+  rentalStrategy: 'entire-house' // <-- Add required field for type
 }
 
 // Helper function to render with SessionProvider

@@ -10,6 +10,7 @@ const createJestConfig = nextJest({
 const config = {
   coverageProvider: 'v8',
   testEnvironment: 'jsdom',
+  globalSetup: '<rootDir>/jest.global-setup.js',
   // Add more setup options before each test is run
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   modulePathIgnorePatterns: ['<rootDir>/.next/'],
@@ -49,7 +50,7 @@ const config = {
     '^openid-client': '<rootDir>/node_modules/openid-client/lib/index.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(jose|openid-client|next-auth|@next-auth|node-fetch|preact-render-to-string|oauth|@auth)/)',
+    'node_modules/(?!(jose|openid-client|next-auth|@next-auth|node-fetch|preact-render-to-string|oauth|@auth|@panva/hkdf)/)',
   ],
 }
 

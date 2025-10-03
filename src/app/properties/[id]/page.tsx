@@ -38,6 +38,7 @@ interface PropertyAnalysisData {
   hoaFees?: number
   equipment?: number
   rehabCosts?: number
+  rentalStrategy?: string
   roi: number
   monthlyPayment: number
   monthlyCashFlow: number
@@ -239,6 +240,7 @@ export default function PropertyDetailPage() {
   equipment: property.equipment || 0,
   rehabCosts: property.rehabCosts || 0,
   imageUrl: property.imageUrl || '',
+  rentalStrategy: (property.rentalStrategy as 'entire-house' | 'individual-rooms') || 'entire-house',
   }
 
   const results: CalculationResults = {
@@ -339,7 +341,8 @@ export default function PropertyDetailPage() {
 
       <ResultsDashboard 
         results={results} 
-        propertyData={propertyData}
+        // Pass the database id to enable imageUrl persistence on replace
+        propertyData={{ ...propertyData, id: property.id }}
         showHeader={false}
       />
 

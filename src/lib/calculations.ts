@@ -188,11 +188,19 @@ export function generateMonthlyProjections(
 ): MonthlyProjection[] {
   const projections: MonthlyProjection[] = []
   const { grossRent, vacancyRate } = input
+  // Fallback gross rent derivation: if grossRent is undefined, derive from rentableRooms (weeklyRate * 4)
+  const grossRentValue: number = (() => {
+    if (typeof grossRent === 'number' && !isNaN(grossRent)) return grossRent
+    if (Array.isArray(input.rentableRooms) && input.rentableRooms.length > 0) {
+      return input.rentableRooms.reduce((sum, room) => sum + room.weeklyRate, 0) * 4
+    }
+    return 0
+  })()
   let cumulativeCashFlow = 0
   
   for (let month = 1; month <= 12; month++) {
-    const vacancyLoss = grossRent * vacancyRate
-    const effectiveGrossIncome = grossRent - vacancyLoss
+    const vacancyLoss = grossRentValue * vacancyRate
+    const effectiveGrossIncome = grossRentValue - vacancyLoss
     const netOperatingIncome = effectiveGrossIncome - monthlyOperatingExpenses
     const cashFlow = netOperatingIncome - monthlyPayment
     cumulativeCashFlow += cashFlow
@@ -200,7 +208,7 @@ export function generateMonthlyProjections(
     projections.push({
       month,
       year: 1,
-      grossRent,
+      grossRent: grossRentValue,
       vacancyLoss: Math.round(vacancyLoss * 100) / 100,
       effectiveGrossIncome: Math.round(effectiveGrossIncome * 100) / 100,
       operatingExpenses: monthlyOperatingExpenses,
@@ -225,11 +233,18 @@ export function generateAnnualProjections(
 ): AnnualProjection[] {
   const projections: AnnualProjection[] = []
   const { 
-    grossRent: initialRent, 
+    grossRent: initialRentRaw, 
     vacancyRate, 
     purchasePrice,
     downPayment 
   } = input
+  const initialRent: number = (() => {
+    if (typeof initialRentRaw === 'number' && !isNaN(initialRentRaw)) return initialRentRaw
+    if (Array.isArray(input.rentableRooms) && input.rentableRooms.length > 0) {
+      return input.rentableRooms.reduce((sum, room) => sum + room.weeklyRate, 0) * 4
+    }
+    return 0
+  })()
 
   const appreciationRate = CALCULATION_DEFAULTS.APPRECIATION_RATE
   const rentGrowthRate = 0.025 // 2.5% annual rent growth
@@ -392,6 +407,18 @@ export function calculatePropertyAnalysis(input: PropertyAnalysisInput): Calcula
     return Number(v);
   })();
 
+  // Derive a stable grossRent value (room-rental fallback) for all downstream calculations
+  const grossRentValue: number = (() => {
+    if (typeof input.grossRent === 'number' && !isNaN(input.grossRent)) return input.grossRent
+    if (Array.isArray(input.rentableRooms) && input.rentableRooms.length > 0) {
+      return input.rentableRooms.reduce((sum, room) => sum + room.weeklyRate, 0) * 4
+    }
+    return 0
+  })()
+
+  // Create a shallow copy with normalized grossRent so helper functions don't need to duplicate logic
+  const normalizedInput: PropertyAnalysisInput = { ...input, grossRent: grossRentValue }
+
   // Basic calculations
   const loanAmount = input.purchasePrice - input.downPayment
   const monthlyPayment = calculateMonthlyPayment(loanAmount, input.interestRate, input.loanTerm)
@@ -403,9 +430,9 @@ export function calculatePropertyAnalysis(input: PropertyAnalysisInput): Calcula
   const annualDebtService = totalMonthlyPayment * 12
   
   // Income calculations
-  const effectiveGrossIncome = input.grossRent * (1 - vacancyRate) * 12
-  const netOperatingIncome = calculateNOI(input.grossRent, vacancyRate, monthlyOperatingExpenses)
-  const monthlyCashFlow = input.grossRent * (1 - vacancyRate) - monthlyOperatingExpenses - totalMonthlyPayment
+  const effectiveGrossIncome = grossRentValue * (1 - vacancyRate) * 12
+  const netOperatingIncome = calculateNOI(grossRentValue, vacancyRate, monthlyOperatingExpenses)
+  const monthlyCashFlow = grossRentValue * (1 - vacancyRate) - monthlyOperatingExpenses - totalMonthlyPayment
   const annualCashFlow = monthlyCashFlow * 12
   
   // Investment metrics
@@ -416,8 +443,8 @@ export function calculatePropertyAnalysis(input: PropertyAnalysisInput): Calcula
   const dscr = calculateDSCR(netOperatingIncome, annualDebtService)
   
   // Generate projections
-  const monthlyProjections = generateMonthlyProjections(input, totalMonthlyPayment, monthlyOperatingExpenses)
-  const annualProjections = generateAnnualProjections(input, annualDebtService, totalAnnualExpenses)
+  const monthlyProjections = generateMonthlyProjections(normalizedInput, totalMonthlyPayment, monthlyOperatingExpenses)
+  const annualProjections = generateAnnualProjections(normalizedInput, annualDebtService, totalAnnualExpenses)
   
   // NPV calculation using 5-year projections
   const fiveYearCashFlows = annualProjections.map(p => p.cashFlow)

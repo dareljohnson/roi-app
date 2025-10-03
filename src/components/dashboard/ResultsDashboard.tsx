@@ -2,26 +2,68 @@
 'use client'
 
 import { CalculationResults, PropertyAnalysisInput } from '@/types/property'
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { TrendingUp, TrendingDown, DollarSign, Home, Calculator, BarChart3, ThumbsUp, ThumbsDown, AlertCircle, History, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
+import { PropertyPhotoUpload } from '@/components/property/PropertyPhotoUpload'
 
 interface ResultsDashboardProps {
   results: CalculationResults
-  propertyData: PropertyAnalysisInput
+  // Accept analysis input shape but allow an optional database id when present
+  propertyData: PropertyAnalysisInput & { id?: string }
   showHeader?: boolean
   defaultTab?: string // e.g., 'financial', 'monthly', 'projections'
+  onPropertyImageUpdate?: (imageUrl: string | null) => void
 }
 
-export function ResultsDashboard({ results, propertyData, showHeader = false, defaultTab = 'financial' }: ResultsDashboardProps) {
+export function ResultsDashboard({ results, propertyData, showHeader = false, defaultTab = 'financial', onPropertyImageUpdate }: ResultsDashboardProps) {
   // ...existing code...
   // State for toggling between 5-year and 30-year projections
   const [projectionYears, setProjectionYears] = useState(5);
   const { status } = useSession()
+  
+  // Handle property image changes and persist to DB
+  const [localImageUrl, setLocalImageUrl] = useState(propertyData.imageUrl);
+  // Keep local state in sync when parent updates prop (e.g., after navigation or server refresh)
+  useEffect(() => {
+    setLocalImageUrl(propertyData.imageUrl);
+  }, [propertyData.imageUrl]);
+  const handleImageChange = async (imageUrl: string | null) => {
+    setLocalImageUrl(imageUrl || undefined);
+    if (onPropertyImageUpdate) {
+      onPropertyImageUpdate(imageUrl);
+    }
+    // Persist to database if propertyData.id exists
+    if (propertyData.id && imageUrl) {
+      try {
+        await fetch(`/api/properties/${propertyData.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl }),
+        });
+      } catch (err) {
+        console.error('Failed to update property image in DB:', err);
+      }
+    }
+  };
+  
+  // Derived gross rent fallback: If grossRent is undefined (e.g., individual-rooms strategy
+  // with legacy data or during transitional states) compute from rentableRooms weekly rates.
+  // This both resolves the TypeScript optional number error and adds runtime resilience.
+  const resolvedGrossRent: number = (() => {
+    if (typeof propertyData.grossRent === 'number' && !isNaN(propertyData.grossRent)) {
+      return propertyData.grossRent
+    }
+    if (propertyData.rentableRooms && propertyData.rentableRooms.length > 0) {
+      const monthlyFromRooms = propertyData.rentableRooms.reduce((sum, room) => sum + room.weeklyRate, 0) * 4
+      return monthlyFromRooms
+    }
+    return 0
+  })()
   const getRecommendationIcon = () => {
     switch (results.recommendation) {
       case 'BUY':
@@ -284,16 +326,30 @@ export function ResultsDashboard({ results, propertyData, showHeader = false, de
                 </div>
               </div>
             </div>
-            {propertyData.imageUrl && (
-              <div className="flex-shrink-0 lg:ml-auto w-full lg:w-56 flex justify-end items-start">
-                <img
-                  src={propertyData.imageUrl}
-                  alt="Property"
-                  className="rounded-lg shadow max-h-56 object-cover border border-gray-200"
-                  style={{ maxWidth: '100%', width: 'auto' }}
-                />
-              </div>
-            )}
+            <div className="flex-shrink-0 lg:ml-auto w-full lg:w-56 flex justify-end items-start">
+              {(localImageUrl || propertyData.imageUrl) ? (
+                <div className="relative">
+                  <img
+                    src={localImageUrl || propertyData.imageUrl}
+                    alt="Property"
+                    className="rounded-lg shadow max-h-56 object-cover border border-gray-200"
+                    style={{ maxWidth: '100%', width: 'auto' }}
+                  />
+                  <div className="mt-2">
+                    <PropertyPhotoUpload 
+                      onImageChange={handleImageChange}
+                      currentImageUrl={localImageUrl || propertyData.imageUrl}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full max-w-sm">
+                  <PropertyPhotoUpload 
+                    onImageChange={handleImageChange}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -402,18 +458,18 @@ export function ResultsDashboard({ results, propertyData, showHeader = false, de
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span>Monthly Gross Rent:</span>
-                  <span className="font-semibold">{formatCurrency(propertyData.grossRent)}</span>
+                  <span className="font-semibold">{formatCurrency(resolvedGrossRent)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Vacancy Loss ({formatPercent(propertyData.vacancyRate * 100)}):</span>
                   <span className="font-semibold text-red-600">
-                    -{formatCurrency(propertyData.grossRent * propertyData.vacancyRate)}
+                    -{formatCurrency(resolvedGrossRent * propertyData.vacancyRate)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Effective Gross Income:</span>
                   <span className="font-semibold">
-                    {formatCurrency(propertyData.grossRent * (1 - propertyData.vacancyRate))}
+                    {formatCurrency(resolvedGrossRent * (1 - propertyData.vacancyRate))}
                   </span>
                 </div>
                 <hr />

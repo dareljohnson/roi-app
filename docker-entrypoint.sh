@@ -14,6 +14,24 @@ if [ -d /data ]; then
   chmod 775 /data || true
 fi
 
+# Ensure public upload directories exist and are writable by nextjs before dropping privileges
+UPLOAD_BASE="/app/public/uploads"
+PHOTO_DIR="$UPLOAD_BASE/walkthrough-photos"
+if [ ! -d "$PHOTO_DIR" ]; then
+  echo "📁 Creating upload directories: $PHOTO_DIR"
+  mkdir -p "$PHOTO_DIR" || echo "⚠️  Failed to create $PHOTO_DIR"
+fi
+
+# Adjust ownership only if not already owned by nextjs
+if [ -d "$UPLOAD_BASE" ]; then
+  UP_OWNER=$(stat -c %u "$UPLOAD_BASE" || echo 0)
+  if [ "$UP_OWNER" != "1001" ]; then
+    echo "🛠  Adjusting ownership of $UPLOAD_BASE to nextjs (1001:1001)"
+    chown -R 1001:1001 "$UPLOAD_BASE" || echo "⚠️  Could not chown $UPLOAD_BASE"
+  fi
+  chmod -R 775 "$UPLOAD_BASE" || true
+fi
+
 # Release command path: fly runs `./docker-entrypoint.sh bash scripts/deploy-db.sh`
 if [ "${1:-}" = "bash" ] && [ "${2:-}" = "scripts/deploy-db.sh" ]; then
   echo "🚀 Running release command: bash scripts/deploy-db.sh"

@@ -1,10 +1,60 @@
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }, sessionArg?: any) {
+  const start = Date.now();
+  let status = 200;
+  try {
+    let session
+    if (sessionArg === null) {
+      status = 401;
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status })
+    } else if (typeof sessionArg === 'undefined') {
+      session = await getServerSession(authOptions)
+    } else {
+      session = sessionArg
+    }
+    if (!session?.user) {
+      status = 401;
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status })
+    }
+    const propertyId = params.id;
+    if (!propertyId) {
+      status = 400;
+      return NextResponse.json({ success: false, error: 'Invalid property ID' }, { status })
+    }
+    const body = await request.json();
+    const { imageUrl } = body;
+    if (!imageUrl) {
+      status = 400;
+      return NextResponse.json({ success: false, error: 'Missing imageUrl' }, { status })
+    }
+    // Verify ownership unless admin
+    const prop = await prisma.property.findUnique({ where: { id: propertyId }, select: { userId: true } })
+    if (!prop) {
+      status = 404;
+      return NextResponse.json({ success: false, error: 'Property not found' }, { status })
+    }
+    if ((session.user as any).role !== 'ADMIN' && prop.userId !== (session.user as any).id) {
+      status = 403;
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status })
+    }
+    // Update property imageUrl
+    const updated = await prisma.property.update({
+      where: { id: propertyId },
+      data: { imageUrl },
+    });
+    return NextResponse.json({ success: true, property: updated }, { status });
+  } catch (error) {
+    status = 500;
+    console.error('Error updating property image:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status });
+  } finally {
+    recordApiCall(request, status, Date.now() - start);
+  }
+}
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { recordApiCall } from '@/lib/adminInsights'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/database'
 
 export async function GET(
   request: NextRequest,
@@ -89,6 +139,7 @@ export async function GET(
       bathrooms: property.bathrooms,
       condition: property.condition,
       imageUrl: property.imageUrl,
+      rentalStrategy: (property as any).rentalStrategy || 'entire-house',
       downPayment: property.downPayment,
       interestRate: property.interestRate,
       loanTerm: property.loanTerm,
@@ -238,6 +289,7 @@ export async function POST(request: NextRequest) {
       hoaFees,
       equipment,
       rehabCosts,
+      rentalStrategy,
     } = body
     if (!address || !propertyType || !purchasePrice || !currentValue || !squareFootage || !lotSize || !yearBuilt || !bedrooms || !bathrooms || !condition) {
       status = 400;
@@ -274,6 +326,8 @@ export async function POST(request: NextRequest) {
         hoaFees,
         equipment,
         rehabCosts,
+  // @ts-ignore Prisma client needs regeneration after schema change
+  rentalStrategy: rentalStrategy || 'entire-house',
         userId: (session.user as any).id, // Set the owner to the logged-in user
       },
     })

@@ -19,6 +19,9 @@ jest.mock('@/lib/prisma', () => ({
     update: jest.fn(),
     delete: jest.fn(),
   },
+  walkThroughPhoto: {
+    findMany: jest.fn(),
+  },
   user: {
     findUnique: jest.fn(),
   },
@@ -358,6 +361,9 @@ describe('Walk-Through Notes Admin Access', () => {
       ;(prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser)
       ;(prisma.walkThroughNote.findFirst as jest.Mock).mockResolvedValue(mockExistingNote)
       ;(prisma.walkThroughNote.delete as jest.Mock).mockResolvedValue({})
+      
+      // Mock photo deletion
+      ;(prisma.walkThroughPhoto.findMany as jest.Mock).mockResolvedValue([])
 
       const request = new NextRequest('http://localhost/api/walkthrough-notes/note-id', {
         method: 'DELETE'
@@ -388,6 +394,9 @@ describe('Walk-Through Notes Admin Access', () => {
       ;(prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser)
       ;(prisma.walkThroughNote.findFirst as jest.Mock).mockResolvedValue(mockExistingNote)
       ;(prisma.walkThroughNote.delete as jest.Mock).mockResolvedValue({})
+      
+      // Mock photo deletion
+      ;(prisma.walkThroughPhoto.findMany as jest.Mock).mockResolvedValue([])
 
       const request = new NextRequest('http://localhost/api/walkthrough-notes/note-id', {
         method: 'DELETE'
